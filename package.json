@@ -1,0 +1,44 @@
+{
+  "name": "opencode-task-hub",
+  "version": "1.0.0",
+  "description": "Real-time task hub for managing multiple OpenCode sessions with WebSocket dashboard",
+  "type": "module",
+  "main": "server.js",
+  "bin": {
+    "opencode-task-hub": "./server.js"
+  },
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node --watch server.js",
+    "postinstall": "node scripts/postinstall.js"
+  },
+  "keywords": [
+    "opencode",
+    "task-management",
+    "multi-agent",
+    "ai-coding",
+    "developer-tools",
+    "websocket",
+    "real-time"
+  ],
+  "author": "lztry",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/lztry/opencode-task-hub"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "os": [
+    "darwin",
+    "linux",
+    "win32"
+  ],
+  "dependencies": {
+    "express": "^4.18.2",
+    "ws": "^8.16.0",
+    "cors": "^2.8.5",
+    "uuid": "^9.0.0"
+  }
+}

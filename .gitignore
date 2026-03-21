@@ -1,0 +1,43 @@
+# Dependencies
+node_modules/
+
+# Data files
+data.json
+*.db
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Build
+dist/
+build/
+
+# Temporary
+tmp/
+temp/
+*.tmp
+
+# Test coverage
+coverage/
+.nyc_output/
+
+# Lock files (optional - some prefer to keep)
+# package-lock.json
+# bun.lock
