@@ -14,11 +14,12 @@
     .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
     .status-dot.offline { background: #ef4444; }
     .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
-    .section { background: #1e293b; border-radius: 12px; padding: 1.25rem; }
-    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #334155; }
+    .section { background: #1e293b; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #334155; flex-shrink: 0; }
     .section-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
     .badge { background: #334155; padding: 0.125rem 0.5rem; border-radius: 10px; font-size: 0.75rem; }
-    .sessions-list, .tasks-list { display: flex; flex-direction: column; gap: 0.75rem; max-height: 400px; overflow-y: auto; }
+    .sessions-list, .tasks-container { flex: 1; overflow-y: auto; }
+    .sessions-list { display: flex; flex-direction: column; gap: 0.75rem; max-height: calc(100vh - 280px); }
     .session-card { background: #0f172a; border-radius: 8px; padding: 1rem; display: flex; gap: 1rem; align-items: flex-start; }
     .session-icon { font-size: 1.5rem; }
     .session-info { flex: 1; min-width: 0; }
@@ -29,27 +30,6 @@
     .session-status.active { background: #22c55e; box-shadow: 0 0 8px #22c55e80; }
     .session-status.idle { background: #f59e0b; }
     .session-status.offline { background: #64748b; }
-    .task-item { background: #0f172a; border-radius: 8px; padding: 0.75rem 1rem; display: flex; align-items: center; gap: 0.75rem; }
-    .task-priority { width: 4px; height: 100%; border-radius: 2px; }
-    .task-priority.high { background: #ef4444; }
-    .task-priority.medium { background: #f59e0b; }
-    .task-priority.low { background: #22c55e; }
-    .task-info { flex: 1; min-width: 0; }
-    .task-title { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-    .task-meta { font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; }
-    .task-session { font-size: 0.7rem; padding: 0.125rem 0.375rem; background: #334155; border-radius: 4px; }
-    .task-actions { display: flex; gap: 0.25rem; }
-    .btn { padding: 0.375rem 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.7rem; transition: all 0.2s; }
-    .btn-primary { background: #3b82f6; color: white; }
-    .btn-primary:hover { background: #2563eb; }
-    .btn-success { background: #22c55e; color: white; }
-    .btn-success:hover { background: #16a34a; }
-    .btn-danger { background: #ef444420; color: #ef4444; }
-    .btn-danger:hover { background: #ef444440; }
-    .add-form { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
-    .add-form input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e2e8f0; font-size: 0.875rem; }
-    .add-form input:focus { outline: none; border-color: #3b82f6; }
-    .add-form button { padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #3b82f6; color: white; cursor: pointer; font-size: 0.875rem; }
     .empty { text-align: center; padding: 2rem; color: #64748b; }
     .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
     .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
@@ -59,6 +39,73 @@
     .summary-value.green { color: #22c55e; }
     .summary-value.blue { color: #3b82f6; }
     .summary-value.orange { color: #f59e0b; }
+    
+    .session-group { margin-bottom: 1rem; }
+    .session-group:last-child { margin-bottom: 0; }
+    .session-group-header { 
+      display: flex; 
+      align-items: center; 
+      gap: 0.5rem; 
+      padding: 0.75rem 1rem; 
+      background: #0f172a; 
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .session-group-header:hover { background: #1e293b; }
+    .session-group-header .toggle { 
+      font-size: 0.75rem; 
+      color: #64748b;
+      transition: transform 0.2s;
+    }
+    .session-group-header .toggle.expanded { transform: rotate(90deg); }
+    .session-group-header .session-icon { font-size: 1.25rem; }
+    .session-group-header .session-name { flex: 1; margin: 0; font-weight: 600; }
+    .session-group-header .session-status { position: static; width: 8px; height: 8px; }
+    .session-group-header .task-count { 
+      font-size: 0.7rem; 
+      padding: 0.125rem 0.375rem; 
+      background: #334155; 
+      border-radius: 4px;
+    }
+    .session-group-tasks { 
+      background: #0f172a40; 
+      border-radius: 0 0 8px 8px; 
+      padding: 0.5rem;
+      display: none;
+    }
+    .session-group-tasks.expanded { display: block; }
+    
+    .task-item { 
+      background: #1e293b; 
+      border-radius: 6px; 
+      padding: 0.75rem 1rem; 
+      display: flex; 
+      align-items: center; 
+      gap: 0.75rem; 
+      margin-bottom: 0.5rem;
+    }
+    .task-item:last-child { margin-bottom: 0; }
+    .task-priority { width: 4px; height: 100%; border-radius: 2px; min-height: 36px; }
+    .task-priority.high { background: #ef4444; }
+    .task-priority.medium { background: #f59e0b; }
+    .task-priority.low { background: #22c55e; }
+    .task-info { flex: 1; min-width: 0; }
+    .task-title { font-weight: 500; word-break: break-word; }
+    .task-meta { font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; }
+    .task-actions { display: flex; gap: 0.25rem; }
+    .btn { padding: 0.375rem 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.7rem; transition: all 0.2s; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-danger { background: #ef444420; color: #ef4444; }
+    .btn-danger:hover { background: #ef444440; }
+    .add-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-shrink: 0; }
+    .add-form input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e2e8f0; font-size: 0.875rem; }
+    .add-form input:focus { outline: none; border-color: #3b82f6; }
+    .add-form button { padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #3b82f6; color: white; cursor: pointer; font-size: 0.875rem; }
+    .no-tasks { text-align: center; padding: 1rem; color: #64748b; font-size: 0.875rem; }
   </style>
 </head>
 <body>
@@ -112,7 +159,7 @@
           <input type="text" id="newTaskInput" placeholder="输入新任务...">
           <button class="btn btn-primary" onclick="addTask()">添加</button>
         </div>
-        <div class="tasks-list" id="tasksList"></div>
+        <div class="tasks-container" id="tasksContainer"></div>
       </div>
     </div>
   </div>
@@ -121,6 +168,7 @@
     let sessions = [];
     let tasks = [];
     let ws = null;
+    let expandedSessions = new Set();
 
     function connect() {
       ws = new WebSocket('ws://localhost:3030');
@@ -139,17 +187,21 @@
           sessions = data.sessions || [];
           tasks = data.tasks || [];
           updateSummary(data.summary);
+          if (expandedSessions.size === 0) {
+            sessions.forEach(s => expandedSessions.add(s.id || s.sessionId));
+          }
           render();
         } else if (data.type === 'session:created') {
           sessions.push(data.session);
-          renderSessions();
+          expandedSessions.add(data.session.id || data.session.sessionId);
+          render();
         } else if (data.type === 'session:updated') {
           const idx = sessions.findIndex(s => s.id === data.session.id);
           if (idx !== -1) sessions[idx] = data.session;
           renderSessions();
         } else if (data.type === 'session:removed') {
           sessions = sessions.filter(s => s.sessionId !== data.sessionId);
-          renderSessions();
+          render();
         } else if (data.type === 'task:created') {
           tasks.unshift(data.task);
           render();
@@ -177,6 +229,7 @@
       const tasksData = await tasksRes.json();
       sessions = sessionsData.sessions || [];
       tasks = tasksData.tasks || [];
+      sessions.forEach(s => expandedSessions.add(s.id || s.sessionId));
       updateSummary({
         totalSessions: sessions.length,
         activeSessions: sessions.filter(s => s.status === 'active').length,
@@ -222,30 +275,96 @@
     }
 
     function renderTasks() {
-      const list = document.getElementById('tasksList');
+      const container = document.getElementById('tasksContainer');
+      
       if (tasks.length === 0) {
-        list.innerHTML = '<div class="empty"><div class="empty-icon">📋</div><div>暂无任务</div></div>';
+        container.innerHTML = '<div class="no-tasks">暂无任务<br><span style="font-size:0.7rem">在 opencode 中输入任务指令将自动显示</span></div>';
         return;
       }
-      list.innerHTML = tasks.map(t => {
-        const session = sessions.find(s => s.sessionId === t.sessionId || s.id === t.sessionId);
-        return `
-          <div class="task-item">
-            <div class="task-priority ${t.priority || 'medium'}"></div>
-            <div class="task-info">
-              <div class="task-title">${escapeHtml(t.title || '未命名任务')}</div>
-              <div class="task-meta">
-                ${t.status === 'completed' ? '✅ 已完成' : t.status === 'in_progress' ? '🔄 进行中' : '⏳ 待处理'}
-                ${session ? `<span class="task-session">${escapeHtml(session.projectName)}</span>` : ''}
-              </div>
+
+      let html = '';
+      
+      for (const session of sessions) {
+        const sessionId = session.id || session.sessionId;
+        const sessionTasks = tasks.filter(t => t.sessionId === sessionId || t.id === sessionId);
+        const isExpanded = expandedSessions.has(sessionId);
+        
+        if (sessionTasks.length === 0) continue;
+        
+        const completedCount = sessionTasks.filter(t => t.status === 'completed').length;
+        
+        html += `
+          <div class="session-group" data-session="${escapeHtml(sessionId)}">
+            <div class="session-group-header" onclick="toggleSession('${escapeHtml(sessionId)}')">
+              <span class="toggle ${isExpanded ? 'expanded' : ''}">▶</span>
+              <span class="session-icon">💻</span>
+              <span class="session-name">${escapeHtml(session.projectName)}</span>
+              <span class="session-status ${session.status || 'active'}"></span>
+              <span class="task-count">${completedCount}/${sessionTasks.length}</span>
             </div>
-            <div class="task-actions">
-              ${t.status !== 'completed' ? `<button class="btn btn-success" onclick="completeTask('${t.id}')">完成</button>` : ''}
-              <button class="btn btn-danger" onclick="deleteTask('${t.id}')">删除</button>
+            <div class="session-group-tasks ${isExpanded ? 'expanded' : ''}">
+              ${sessionTasks.map(t => renderTaskItem(t)).join('')}
             </div>
           </div>
         `;
-      }).join('');
+      }
+
+      const unassignedTasks = tasks.filter(t => {
+        if (!t.sessionId) return true;
+        return !sessions.some(s => (s.id || s.sessionId) === t.sessionId);
+      });
+
+      if (unassignedTasks.length > 0) {
+        const sessionId = 'unassigned';
+        const isExpanded = expandedSessions.has(sessionId);
+        const completedCount = unassignedTasks.filter(t => t.status === 'completed').length;
+        
+        html += `
+          <div class="session-group" data-session="${sessionId}">
+            <div class="session-group-header" onclick="toggleSession('${sessionId}')">
+              <span class="toggle ${isExpanded ? 'expanded' : ''}">▶</span>
+              <span class="session-icon">📋</span>
+              <span class="session-name">未分配任务</span>
+              <span class="task-count">${completedCount}/${unassignedTasks.length}</span>
+            </div>
+            <div class="session-group-tasks ${isExpanded ? 'expanded' : ''}">
+              ${unassignedTasks.map(t => renderTaskItem(t)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (!html) {
+        container.innerHTML = '<div class="no-tasks">暂无任务</div>';
+      } else {
+        container.innerHTML = html;
+      }
+    }
+
+    function renderTaskItem(t) {
+      const statusText = t.status === 'completed' ? '✅ 已完成' : t.status === 'in_progress' ? '🔄 进行中' : '⏳ 待处理';
+      return `
+        <div class="task-item">
+          <div class="task-priority ${t.priority || 'medium'}"></div>
+          <div class="task-info">
+            <div class="task-title">${escapeHtml(t.title || '未命名任务')}</div>
+            <div class="task-meta">${statusText}</div>
+          </div>
+          <div class="task-actions">
+            ${t.status !== 'completed' ? `<button class="btn btn-success" onclick="completeTask('${t.id}')">完成</button>` : ''}
+            <button class="btn btn-danger" onclick="deleteTask('${t.id}')">删除</button>
+          </div>
+        </div>
+      `;
+    }
+
+    function toggleSession(sessionId) {
+      if (expandedSessions.has(sessionId)) {
+        expandedSessions.delete(sessionId);
+      } else {
+        expandedSessions.add(sessionId);
+      }
+      renderTasks();
     }
 
     function escapeHtml(text) {
