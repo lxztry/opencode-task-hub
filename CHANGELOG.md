@@ -21,6 +21,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - npm package for easy installation
 - Comprehensive documentation (README, CONTRIBUTING)
 - GitHub repository integration
+- CI/CD with GitHub Actions
+- Unit tests with Node.js test runner
+- Code linting scripts
+- SVG logo
+- Additional plugins (progress-tracker, metrics-collector)
 
 ### Features
 
@@ -29,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Task creation and assignment
 - Session heartbeat (30s interval)
 - Cross-platform support (macOS, Linux, Windows)
+- Docker support
+- npm release automation
+- Docker Hub automated builds
 
 ## [0.1.0] - 2026-03-21
 
