@@ -38,7 +38,7 @@ async function main() {
         try {
             fs.mkdirSync(PLUGIN_DIR, { recursive: true });
             fs.copyFileSync(
-                path.join(__dirname, 'plugins', 'task-reporter.js'),
+                path.join(__dirname, '..', 'plugins', 'task-reporter.js'),
                 path.join(PLUGIN_DIR, 'task-reporter.js')
             );
             success('Plugin installed');

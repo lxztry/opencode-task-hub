@@ -60,7 +60,14 @@ function broadcast(data) {
 let wss;
 
 app.get('/api/sessions', (req, res) => {
-  res.json({ sessions });
+  let filteredSessions = sessions;
+  if (req.query.projectName) {
+    const searchName = req.query.projectName.toLowerCase();
+    filteredSessions = sessions.filter(s => 
+      s.projectName.toLowerCase().includes(searchName)
+    );
+  }
+  res.json({ sessions: filteredSessions });
 });
 
 app.post('/api/sessions/register', (req, res) => {
@@ -69,6 +76,7 @@ app.post('/api/sessions/register', (req, res) => {
   const existing = sessions.find(s => s.projectKey === projectKey);
   if (existing) {
     existing.sessionId = sessionId;
+    existing.projectName = projectName || existing.projectName || path.basename(projectPath) || 'unknown';
     existing.lastHeartbeat = new Date().toISOString();
     existing.status = 'active';
     existing.lastActivity = '已连接';
@@ -101,6 +109,7 @@ app.post('/api/sessions/:sessionId/heartbeat', (req, res) => {
   }
   if (session) {
     session.sessionId = req.params.sessionId;
+    if (req.body.projectName) session.projectName = req.body.projectName;
     session.lastHeartbeat = new Date().toISOString();
     session.status = 'active';
     saveData();
@@ -118,6 +127,12 @@ app.post('/api/sessions/:sessionId/log', (req, res) => {
     session.sessionId = req.params.sessionId;
     session.lastActivity = req.body.description || req.body.action || '进行中';
     session.lastHeartbeat = new Date().toISOString();
+    if (!session.activities) session.activities = [];
+    session.activities.unshift({
+      description: req.body.description || req.body.action || '进行中',
+      timestamp: new Date().toISOString()
+    });
+    if (session.activities.length > 50) session.activities = session.activities.slice(0, 50);
     saveData();
     broadcast({ type: 'activity', session });
   }
@@ -132,6 +147,12 @@ app.delete('/api/sessions/:sessionId', (req, res) => {
     broadcast({ type: 'session:removed', sessionId: req.params.sessionId });
   }
   res.json({ ok: true });
+});
+
+app.get('/api/sessions/:id/activities', (req, res) => {
+  const session = sessions.find(s => s.id === req.params.id || s.sessionId === req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+  res.json({ activities: session.activities || [] });
 });
 
 app.get('/api/tasks', (req, res) => {

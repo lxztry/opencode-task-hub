@@ -5,12 +5,6 @@ const API_BASE = "http://localhost:3030";
 const HEARTBEAT_INTERVAL = 30000;
 
 const sessions = new Map();
-const taskPatterns = [
-  /^(帮我|请|我想|需要|要|能不能)/i,
-  /^(实现|开发|添加|创建|修复|优化|改进|完善|重构|检查|分析)/i,
-  /^任务[:：]/i,
-  /^.task/i,
-];
 
 function extractTaskFromMessage(message) {
   if (!message || typeof message !== "string") return null;
@@ -60,6 +54,14 @@ function extractTaskFromMessage(message) {
   return null;
 }
 
+function getTextFromParts(parts) {
+  if (!parts || !Array.isArray(parts)) return "";
+  return parts
+    .filter((p) => p && p.type === "text")
+    .map((p) => p.text)
+    .join("\n");
+}
+
 async function api(endpoint, method = "GET", body = null) {
   try {
     const options = {
@@ -102,42 +104,40 @@ async function createTask(sessionId, title, priority = "medium", projectKey = nu
   });
 }
 
-async function ensureSession(sessionID, cwd) {
-  const projectPath = cwd || directory || process.cwd();
-  const projectKey = `${os.hostname()}:${projectPath}`;
-  let sessionInfo = sessions.get(projectKey);
-  if (!sessionInfo) {
-    const projectName = project?.name || projectPath.split(/[/\\]/).pop() || "unknown";
-    const session = await registerSession(sessionID, projectPath, projectName);
-    if (session?.id) {
-      const heartbeatTimer = setInterval(async () => {
-        const si = sessions.get(projectKey);
-        if (si) {
-          await heartbeat(si.sessionId, projectKey);
-        }
-      }, HEARTBEAT_INTERVAL);
-      sessionInfo = { id: session.id, sessionId: sessionID, heartbeatTimer, projectName, projectPath, projectKey };
-      sessions.set(projectKey, sessionInfo);
-    }
-  } else {
-    sessionInfo.sessionId = sessionID;
-  }
-  return sessionInfo;
-}
-
 export const TaskReporterPlugin = async ({
-  client,
   project,
   directory,
-  serverUrl,
 }) => {
+  async function ensureSession(sessionID, cwd) {
+    const projectPath = cwd || directory || process.cwd();
+    const projectKey = `${os.hostname()}:${projectPath}`;
+    let sessionInfo = sessions.get(projectKey);
+    if (!sessionInfo) {
+      const projectName = project?.name || projectPath.split(/[/\\]/).pop() || "unknown";
+      const session = await registerSession(sessionID, projectPath, projectName);
+      if (session?.id) {
+        const heartbeatTimer = setInterval(async () => {
+          const si = sessions.get(projectKey);
+          if (si) {
+            await heartbeat(si.sessionId, projectKey);
+          }
+        }, HEARTBEAT_INTERVAL);
+        sessionInfo = { id: session.id, sessionId: sessionID, heartbeatTimer, projectName, projectPath, projectKey };
+        sessions.set(projectKey, sessionInfo);
+      }
+    } else {
+      sessionInfo.sessionId = sessionID;
+    }
+    return sessionInfo;
+  }
+
   return {
     tool: {
       registerTask: tool({
         description: "注册当前会话到任务中心",
         args: {},
-        async execute(args, { sessionID, cwd }) {
-          const sessionInfo = await ensureSession(sessionID, cwd);
+        async execute(args, { sessionID, directory: dir }) {
+          const sessionInfo = await ensureSession(sessionID, dir);
           return { registered: !!sessionInfo, sessionId: sessionInfo?.sessionId };
         },
       }),
@@ -147,7 +147,7 @@ export const TaskReporterPlugin = async ({
           description: tool.schema.string().describe("活动描述"),
         },
         async execute(args, { sessionID }) {
-          const sessionInfo = await ensureSession(sessionID, args.cwd);
+          const sessionInfo = [...sessions.values()].find((s) => s.sessionId === sessionID);
           if (sessionInfo) {
             await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, args.description);
           }
@@ -160,10 +160,10 @@ export const TaskReporterPlugin = async ({
           title: tool.schema.string().describe("任务标题，简洁明确"),
           priority: tool.schema.enum(["high", "medium", "low"]).optional().describe("优先级：high/medium/low"),
         },
-        async execute(args, { sessionID, cwd }) {
-          const sessionInfo = await ensureSession(sessionID, cwd);
+        async execute(args, { sessionID, directory: dir }) {
+          const sessionInfo = await ensureSession(sessionID, dir);
           if (!sessionInfo) return { success: false, error: "无法连接到任务中心" };
-          
+
           const task = await createTask(sessionInfo.id, args.title, args.priority || "medium", sessionInfo.projectKey);
           if (task?.id) {
             await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, `📋 添加任务: ${args.title}`);
@@ -175,8 +175,8 @@ export const TaskReporterPlugin = async ({
       listTasks: tool({
         description: "查看当前会话的所有任务",
         args: {},
-        async execute(args, { sessionID, cwd }) {
-          const sessionInfo = await ensureSession(sessionID, cwd);
+        async execute(args, { sessionID, directory: dir }) {
+          const sessionInfo = await ensureSession(sessionID, dir);
           if (!sessionInfo) {
             return { success: false, tasks: [], message: "请先使用 registerTask 注册会话" };
           }
@@ -194,8 +194,8 @@ export const TaskReporterPlugin = async ({
         args: {
           taskId: tool.schema.string().describe("任务ID"),
         },
-        async execute(args, { sessionID, cwd }) {
-          const sessionInfo = await ensureSession(sessionID, cwd);
+        async execute(args, { sessionID, directory: dir }) {
+          const sessionInfo = await ensureSession(sessionID, dir);
           if (!sessionInfo) return { success: false };
           try {
             const resp = await fetch(`${API_BASE}/api/tasks/${args.taskId}`, {
@@ -215,7 +215,7 @@ export const TaskReporterPlugin = async ({
       }),
     },
     "tool.execute.after": async (input, output) => {
-      const sessionInfo = await ensureSession(input.sessionID, input.cwd);
+      const sessionInfo = await ensureSession(input.sessionID, directory);
       if (sessionInfo) {
         let desc = `执行 ${input.tool}`;
         if (input.args?.filePath) desc += `: ${input.args.filePath}`;
@@ -223,26 +223,27 @@ export const TaskReporterPlugin = async ({
         await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, desc);
       }
     },
-    "chat.user.message": async (input) => {
-      const userMessage = typeof input.message === "string" ? input.message : (input.messages?.slice(-1)[0]?.content || "");
-      if (!userMessage || userMessage.length < 5) return;
+    "chat.message": async (input, output) => {
+      const userText = getTextFromParts(output?.parts);
+      if (userText && userText.length >= 5) {
+        const taskTitle = extractTaskFromMessage(userText);
+        const sessionInfo = await ensureSession(input.sessionID, directory);
 
-      const taskTitle = extractTaskFromMessage(userMessage);
-      const sessionInfo = await ensureSession(input.sessionID, input.cwd || directory);
-
-      if (sessionInfo && taskTitle) {
-        const now = Date.now();
-        if (now - (sessionInfo.lastTaskTime || 0) > 30000) {
-          await createTask(sessionInfo.id, taskTitle, "medium", sessionInfo.projectKey);
-          sessionInfo.lastTaskTime = now;
-          console.log(`[TaskHub] 自动提取任务: ${taskTitle}`);
+        if (sessionInfo && taskTitle) {
+          const now = Date.now();
+          if (now - (sessionInfo.lastTaskTime || 0) > 30000) {
+            await createTask(sessionInfo.id, taskTitle, "medium", sessionInfo.projectKey);
+            sessionInfo.lastTaskTime = now;
+            console.log(`[TaskHub] 自动提取任务: ${taskTitle}`);
+          }
         }
       }
-    },
-    "chat.message": async (input, output) => {
-      const sessionInfo = await ensureSession(input.sessionID, input.cwd || directory);
-      if (sessionInfo && input.agent) {
-        await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, `AI: ${input.agent}`);
+
+      if (input.agent) {
+        const sessionInfo = await ensureSession(input.sessionID, directory);
+        if (sessionInfo) {
+          await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, `AI: ${input.agent}`);
+        }
       }
     },
   };

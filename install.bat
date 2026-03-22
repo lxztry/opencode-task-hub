@@ -6,7 +6,7 @@ echo 安装 OpenCode Task Hub...
 set PLUGIN_DIR=%USERPROFILE%\.config\opencode\plugins
 if not exist "%PLUGIN_DIR%" mkdir "%PLUGIN_DIR%"
 
-copy /y plugins\task-reporter.js "%PLUGIN_DIR%\"
+copy /y "%~dp0plugins\task-reporter.js" "%PLUGIN_DIR%\"
 
 set CONFIG_FILE=%USERPROFILE%\.config\opencode\opencode.json
 if exist "%CONFIG_FILE%" (

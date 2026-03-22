@@ -106,6 +106,23 @@
     .add-form input:focus { outline: none; border-color: #3b82f6; }
     .add-form button { padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #3b82f6; color: white; cursor: pointer; font-size: 0.875rem; }
     .no-tasks { text-align: center; padding: 1rem; color: #64748b; font-size: 0.875rem; }
+    .search-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-shrink: 0; }
+    .search-form input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e2e8f0; font-size: 0.875rem; }
+    .search-form input:focus { outline: none; border-color: #3b82f6; }
+    .search-form button { padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #3b82f6; color: white; cursor: pointer; font-size: 0.875rem; }
+    .search-form button:hover { background: #2563eb; }
+    .search-form button.clear { background: #64748b; }
+    .search-form button.clear:hover { background: #475569; }
+    .session-card { cursor: pointer; transition: background 0.2s; }
+    .session-card:hover { background: #1e293b; }
+    .activity-list { max-height: 200px; overflow-y: auto; margin-top: 0.5rem; }
+    .activity-item { font-size: 0.7rem; color: #94a3b8; padding: 0.25rem 0; border-bottom: 1px solid #1e293b; }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-time { color: #64748b; margin-right: 0.5rem; }
+    .activity-detail { display: none; }
+    .activity-detail.visible { display: block; }
+    .session-detail { font-size: 0.8rem; }
+    .btn-small { padding: 0.25rem 0.5rem; font-size: 0.65rem; }
   </style>
 </head>
 <body>
@@ -147,6 +164,11 @@
           <div class="section-title">OpenCode 会话</div>
           <span class="badge" id="sessionCount">0</span>
         </div>
+        <div class="search-form">
+          <input type="text" id="sessionSearchInput" placeholder="按项目名称搜索会话...">
+          <button class="btn btn-primary" onclick="searchSessions()">搜索</button>
+          <button class="btn clear" onclick="clearSearch()">清除</button>
+        </div>
         <div class="sessions-list" id="sessionsList"></div>
       </div>
 
@@ -165,10 +187,11 @@
   </div>
 
   <script>
-    let sessions = [];
+    let allSessions = [];
     let tasks = [];
     let ws = null;
     let expandedSessions = new Set();
+    let searchQuery = '';
 
     function connect() {
       ws = new WebSocket('ws://localhost:3030');
@@ -184,26 +207,26 @@
       ws.onmessage = (e) => {
         const data = JSON.parse(e.data);
         if (data.type === 'connected') {
-          sessions = data.sessions || [];
+          allSessions = data.sessions || [];
           tasks = data.tasks || [];
           updateSummary(data.summary);
           if (expandedSessions.size === 0) {
-            sessions.forEach(s => expandedSessions.add(s.id));
+            allSessions.forEach(s => expandedSessions.add(s.id));
           }
           render();
         } else if (data.type === 'session:created') {
-          sessions.push(data.session);
+          allSessions.push(data.session);
           expandedSessions.add(data.session.id);
           render();
         } else if (data.type === 'session:updated') {
-          const idx = sessions.findIndex(s => s.id === data.session.id);
-          if (idx !== -1) sessions[idx] = data.session;
+          const idx = allSessions.findIndex(s => s.id === data.session.id);
+          if (idx !== -1) allSessions[idx] = data.session;
           else {
-            sessions.push(data.session);
+            allSessions.push(data.session);
           }
           renderSessions();
         } else if (data.type === 'session:removed') {
-          sessions = sessions.filter(s => s.id !== data.sessionId);
+          allSessions = allSessions.filter(s => s.id !== data.sessionId);
           render();
         } else if (data.type === 'task:created') {
           tasks.unshift(data.task);
@@ -216,8 +239,8 @@
           tasks = tasks.filter(t => t.id !== data.taskId);
           render();
         } else if (data.type === 'activity') {
-          const idx = sessions.findIndex(s => s.id === data.session.id);
-          if (idx !== -1) sessions[idx] = data.session;
+          const idx = allSessions.findIndex(s => s.id === data.session.id);
+          if (idx !== -1) allSessions[idx] = data.session;
           renderSessions();
         }
       };
@@ -230,17 +253,38 @@
       ]);
       const sessionsData = await sessionsRes.json();
       const tasksData = await tasksRes.json();
-      sessions = sessionsData.sessions || [];
+      allSessions = sessionsData.sessions || [];
       tasks = tasksData.tasks || [];
-      sessions.forEach(s => expandedSessions.add(s.id));
+      allSessions.forEach(s => expandedSessions.add(s.id));
       updateSummary({
-        totalSessions: sessions.length,
-        activeSessions: sessions.filter(s => s.status === 'active').length,
+        totalSessions: allSessions.length,
+        activeSessions: allSessions.filter(s => s.status === 'active').length,
         totalTasks: tasks.length,
         activeTasks: tasks.filter(t => t.status === 'in_progress').length,
         completedTasks: tasks.filter(t => t.status === 'completed').length
       });
       render();
+    }
+
+    function getFilteredSessions() {
+      if (!searchQuery) return allSessions;
+      const query = searchQuery.toLowerCase();
+      return allSessions.filter(s => s.projectName.toLowerCase().includes(query));
+    }
+
+    async function searchSessions() {
+      searchQuery = document.getElementById('sessionSearchInput').value.trim();
+      if (!searchQuery) {
+        clearSearch();
+        return;
+      }
+      renderSessions();
+    }
+
+    async function clearSearch() {
+      document.getElementById('sessionSearchInput').value = '';
+      searchQuery = '';
+      renderSessions();
     }
 
     function updateSummary(summary) {
@@ -249,7 +293,7 @@
       document.getElementById('totalTasks').textContent = summary.totalTasks;
       document.getElementById('activeTasks').textContent = summary.activeTasks;
       document.getElementById('completedTasks').textContent = summary.completedTasks;
-      document.getElementById('sessionCount').textContent = sessions.length;
+      document.getElementById('sessionCount').textContent = searchQuery ? getFilteredSessions().length : summary.totalSessions;
       document.getElementById('taskCount').textContent = tasks.length;
     }
 
@@ -260,21 +304,71 @@
 
     function renderSessions() {
       const list = document.getElementById('sessionsList');
-      if (sessions.length === 0) {
-        list.innerHTML = '<div class="empty"><div class="empty-icon">💻</div><div>暂无活跃会话</div><div style="font-size:0.7rem;margin-top:0.5rem">在 opencode 中打开项目即可自动显示</div></div>';
+      const filteredSessions = getFilteredSessions();
+      if (filteredSessions.length === 0) {
+        const msg = searchQuery ? '未找到匹配的会话' : '暂无活跃会话';
+        const sub = searchQuery ? '尝试其他关键词' : '在 opencode 中打开项目即可自动显示';
+        list.innerHTML = `<div class="empty"><div class="empty-icon">💻</div><div>${msg}</div><div style="font-size:0.7rem;margin-top:0.5rem">${sub}</div></div>`;
         return;
       }
-      list.innerHTML = sessions.map(s => `
-        <div class="session-card">
-          <div class="session-icon">💻</div>
-          <div class="session-info">
-            <div class="session-name">${escapeHtml(s.projectName)}</div>
-            <div class="session-meta">${escapeHtml(s.projectPath || '')}</div>
-            <div class="session-activity">${escapeHtml(s.lastActivity || '等待活动...')}</div>
+      list.innerHTML = filteredSessions.map(s => {
+        const sessionTasks = tasks.filter(t => t.sessionId === s.id || t.projectKey === s.projectKey);
+        const isExpanded = expandedSessions.has(s.id);
+        return `
+          <div class="session-card">
+            <div class="session-info" style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;" onclick="toggleSessionDetail('${escapeHtml(s.id)}')">
+                <span class="session-icon">💻</span>
+                <span class="session-name">${escapeHtml(s.projectName)}</span>
+                <span class="badge">${sessionTasks.length} 任务</span>
+                <span class="badge">${(s.activities || []).length} 活动</span>
+                <span class="session-status ${s.status || 'active'}"></span>
+                <span style="color:#64748b;font-size:0.7rem;">${isExpanded ? '▲' : '▼'}</span>
+              </div>
+              <div class="session-meta">${escapeHtml(s.projectPath || '')}</div>
+              <div class="session-activity">${escapeHtml(s.lastActivity || '等待活动...')}</div>
+            </div>
+            <div class="session-detail ${isExpanded ? 'expanded' : ''}" id="detail-${escapeHtml(s.id)}" style="display:none;width:100%;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #334155;">
+              ${sessionTasks.length > 0 ? `
+                <div style="margin-bottom:0.5rem;">
+                  <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">任务列表:</div>
+                  ${sessionTasks.slice(0, 10).map(t => `
+                    <div style="font-size:0.7rem;padding:0.125rem 0;color:${t.status === 'completed' ? '#22c55e' : t.status === 'in_progress' ? '#3b82f6' : '#94a3b8'}">
+                      ${t.status === 'completed' ? '✅' : t.status === 'in_progress' ? '🔄' : '⏳'} ${escapeHtml(t.title || '未命名')}
+                    </div>
+                  `).join('')}
+                  ${sessionTasks.length > 10 ? `<div style="font-size:0.65rem;color:#64748b;">...还有 ${sessionTasks.length - 10} 项</div>` : ''}
+                </div>
+              ` : ''}
+              <div>
+                <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">最近活动:</div>
+                ${(s.activities || []).slice(0, 10).map(a => `
+                  <div class="activity-item">
+                    <span class="activity-time">${formatTime(a.timestamp)}</span>
+                    ${escapeHtml(a.description)}
+                  </div>
+                `).join('')}
+                ${(s.activities || []).length === 0 ? '<div style="font-size:0.65rem;color:#64748b;">暂无活动记录</div>' : ''}
+              </div>
+            </div>
           </div>
-          <div class="session-status ${s.status || 'active'}"></div>
-        </div>
-      `).join('');
+        `;
+      }).join('');
+    }
+
+    function toggleSessionDetail(sessionId) {
+      if (expandedSessions.has(sessionId)) {
+        expandedSessions.delete(sessionId);
+      } else {
+        expandedSessions.add(sessionId);
+      }
+      renderSessions();
+    }
+
+    function formatTime(timestamp) {
+      if (!timestamp) return '';
+      const d = new Date(timestamp);
+      return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
     }
 
     function renderTasks() {
@@ -286,8 +380,9 @@
       }
 
       let html = '';
+      const displaySessions = searchQuery ? getFilteredSessions() : allSessions;
       
-      for (const session of sessions) {
+      for (const session of displaySessions) {
         const sessionDbId = session.id;
         const projectKey = session.projectKey;
         const sessionTasks = tasks.filter(t => 
@@ -318,7 +413,7 @@
 
       const unassignedTasks = tasks.filter(t => {
         if (!t.sessionId && !t.projectKey) return true;
-        return !sessions.some(s => 
+        return !displaySessions.some(s => 
           t.sessionId === s.id || 
           t.projectKey === s.projectKey
         );
@@ -412,6 +507,10 @@
 
     document.getElementById('newTaskInput').addEventListener('keypress', (e) => {
       if (e.key === 'Enter') addTask();
+    });
+
+    document.getElementById('sessionSearchInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') searchSessions();
     });
 
     loadData();
