@@ -11,6 +11,7 @@ import os from 'os';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, 'data.json');
 const PORT = 3030;
+const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
 
 const app = express();
 app.use(cors());
@@ -33,6 +34,20 @@ if (fs.existsSync(DATA_FILE)) {
 
 function saveData() {
   fs.writeFileSync(DATA_FILE, JSON.stringify({ sessions, tasks }, null, 2));
+}
+
+function cleanExpiredSessions() {
+  const now = Date.now();
+  const before = sessions.length;
+  sessions = sessions.filter(s => {
+    const last = new Date(s.lastHeartbeat).getTime();
+    return now - last < SESSION_TIMEOUT;
+  });
+  if (sessions.length !== before) {
+    saveData();
+    broadcast({ type: 'sessions:cleanup', removed: before - sessions.length });
+    console.log(`🧹 已清理 ${before - sessions.length} 个过期会话`);
+  }
 }
 
 function broadcast(data) {
@@ -176,6 +191,8 @@ wss.on('connection', (ws) => {
 });
 
 server.listen(PORT, () => {
+  cleanExpiredSessions();
+  setInterval(cleanExpiredSessions, 60 * 1000); // 每分钟检查一次
   console.log(`\n🎯 OpenCode Task Hub 运行中!`);
   console.log(`   仪表板: http://localhost:${PORT}`);
   console.log(`   ${sessions.length} 个会话已注册\n`);
