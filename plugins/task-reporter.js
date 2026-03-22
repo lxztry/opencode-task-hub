@@ -83,35 +83,44 @@ async function registerSession(sessionId, projectPath, projectName) {
   });
 }
 
-async function heartbeat(sessionId) {
-  await api(`/api/sessions/${sessionId}/heartbeat`, "POST");
+async function heartbeat(sessionId, projectKey) {
+  await api(`/api/sessions/${sessionId}/heartbeat`, "POST", { projectKey });
 }
 
-async function logActivity(sessionId, description) {
-  await api(`/api/sessions/${sessionId}/log`, "POST", { description });
+async function logActivity(sessionId, projectKey, description) {
+  await api(`/api/sessions/${sessionId}/log`, "POST", { projectKey, description });
 }
 
-async function createTask(sessionId, title, priority = "medium") {
+async function createTask(sessionId, title, priority = "medium", projectKey = null) {
   return await api("/api/tasks", "POST", {
     title,
     status: "pending",
     priority,
     sessionId,
     createdBy: "user",
+    projectKey,
   });
 }
 
 async function ensureSession(sessionID, cwd) {
-  let sessionInfo = sessions.get(sessionID);
+  const projectPath = cwd || directory || process.cwd();
+  const projectKey = `${os.hostname()}:${projectPath}`;
+  let sessionInfo = sessions.get(projectKey);
   if (!sessionInfo) {
-    const projectPath = cwd || directory || process.cwd();
     const projectName = project?.name || projectPath.split(/[/\\]/).pop() || "unknown";
     const session = await registerSession(sessionID, projectPath, projectName);
-    if (session?.sessionId) {
-      const heartbeatTimer = setInterval(() => heartbeat(session.sessionId), HEARTBEAT_INTERVAL);
-      sessionInfo = { sessionId: session.sessionId, heartbeatTimer, projectName, projectPath };
-      sessions.set(sessionID, sessionInfo);
+    if (session?.id) {
+      const heartbeatTimer = setInterval(async () => {
+        const si = sessions.get(projectKey);
+        if (si) {
+          await heartbeat(si.sessionId, projectKey);
+        }
+      }, HEARTBEAT_INTERVAL);
+      sessionInfo = { id: session.id, sessionId: sessionID, heartbeatTimer, projectName, projectPath, projectKey };
+      sessions.set(projectKey, sessionInfo);
     }
+  } else {
+    sessionInfo.sessionId = sessionID;
   }
   return sessionInfo;
 }
@@ -138,9 +147,9 @@ export const TaskReporterPlugin = async ({
           description: tool.schema.string().describe("活动描述"),
         },
         async execute(args, { sessionID }) {
-          const sessionInfo = sessions.get(sessionID);
+          const sessionInfo = await ensureSession(sessionID, args.cwd);
           if (sessionInfo) {
-            await logActivity(sessionInfo.sessionId, args.description);
+            await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, args.description);
           }
           return { logged: !!sessionInfo };
         },
@@ -155,9 +164,9 @@ export const TaskReporterPlugin = async ({
           const sessionInfo = await ensureSession(sessionID, cwd);
           if (!sessionInfo) return { success: false, error: "无法连接到任务中心" };
           
-          const task = await createTask(sessionInfo.sessionId, args.title, args.priority || "medium");
+          const task = await createTask(sessionInfo.id, args.title, args.priority || "medium", sessionInfo.projectKey);
           if (task?.id) {
-            await logActivity(sessionInfo.sessionId, `📋 添加任务: ${args.title}`);
+            await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, `📋 添加任务: ${args.title}`);
             return { success: true, task };
           }
           return { success: false, error: "创建任务失败" };
@@ -166,16 +175,15 @@ export const TaskReporterPlugin = async ({
       listTasks: tool({
         description: "查看当前会话的所有任务",
         args: {},
-        async execute(args, { sessionID }) {
-          const sessionInfo = sessions.get(sessionID);
+        async execute(args, { sessionID, cwd }) {
+          const sessionInfo = await ensureSession(sessionID, cwd);
           if (!sessionInfo) {
             return { success: false, tasks: [], message: "请先使用 registerTask 注册会话" };
           }
           try {
-            const resp = await fetch(`${API_BASE}/api/tasks`);
+            const resp = await fetch(`${API_BASE}/api/tasks?sessionId=${encodeURIComponent(sessionInfo.projectKey)}`);
             const data = await resp.json();
-            const sessionTasks = (data.tasks || []).filter(t => t.sessionId === sessionInfo.sessionId);
-            return { success: true, tasks: sessionTasks };
+            return { success: true, tasks: data.tasks || [] };
           } catch (e) {
             return { success: false, tasks: [], error: "获取任务失败" };
           }
@@ -186,8 +194,8 @@ export const TaskReporterPlugin = async ({
         args: {
           taskId: tool.schema.string().describe("任务ID"),
         },
-        async execute(args, { sessionID }) {
-          const sessionInfo = sessions.get(sessionID);
+        async execute(args, { sessionID, cwd }) {
+          const sessionInfo = await ensureSession(sessionID, cwd);
           if (!sessionInfo) return { success: false };
           try {
             const resp = await fetch(`${API_BASE}/api/tasks/${args.taskId}`, {
@@ -197,7 +205,7 @@ export const TaskReporterPlugin = async ({
             });
             const task = await resp.json();
             if (task.id) {
-              await logActivity(sessionInfo.sessionId, `✅ 完成任务: ${task.title}`);
+              await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, `✅ 完成任务: ${task.title}`);
             }
             return { success: true, task };
           } catch (e) {
@@ -212,7 +220,7 @@ export const TaskReporterPlugin = async ({
         let desc = `执行 ${input.tool}`;
         if (input.args?.filePath) desc += `: ${input.args.filePath}`;
         else if (input.args?.command) desc += `: ${input.args.command}`;
-        await logActivity(sessionInfo.sessionId, desc);
+        await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, desc);
       }
     },
     "chat.user.message": async (input) => {
@@ -225,7 +233,7 @@ export const TaskReporterPlugin = async ({
       if (sessionInfo && taskTitle) {
         const now = Date.now();
         if (now - (sessionInfo.lastTaskTime || 0) > 30000) {
-          await createTask(sessionInfo.sessionId, taskTitle);
+          await createTask(sessionInfo.id, taskTitle, "medium", sessionInfo.projectKey);
           sessionInfo.lastTaskTime = now;
           console.log(`[TaskHub] 自动提取任务: ${taskTitle}`);
         }
@@ -234,7 +242,7 @@ export const TaskReporterPlugin = async ({
     "chat.message": async (input, output) => {
       const sessionInfo = await ensureSession(input.sessionID, input.cwd || directory);
       if (sessionInfo && input.agent) {
-        await logActivity(sessionInfo.sessionId, `AI: ${input.agent}`);
+        await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, `AI: ${input.agent}`);
       }
     },
   };

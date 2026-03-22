@@ -65,10 +65,13 @@ app.get('/api/sessions', (req, res) => {
 
 app.post('/api/sessions/register', (req, res) => {
   const { sessionId, projectPath, projectName, hostname } = req.body;
-  const existing = sessions.find(s => s.sessionId === sessionId);
+  const projectKey = `${hostname}:${projectPath}`;
+  const existing = sessions.find(s => s.projectKey === projectKey);
   if (existing) {
+    existing.sessionId = sessionId;
     existing.lastHeartbeat = new Date().toISOString();
     existing.status = 'active';
+    existing.lastActivity = '已连接';
     saveData();
     broadcast({ type: 'session:updated', session: existing });
     return res.json(existing);
@@ -77,6 +80,7 @@ app.post('/api/sessions/register', (req, res) => {
     id: uuidv4(),
     sessionId,
     projectPath,
+    projectKey,
     projectName: projectName || path.basename(projectPath) || 'unknown',
     hostname: hostname || os.hostname(),
     status: 'active',
@@ -91,8 +95,12 @@ app.post('/api/sessions/register', (req, res) => {
 });
 
 app.post('/api/sessions/:sessionId/heartbeat', (req, res) => {
-  const session = sessions.find(s => s.sessionId === req.params.sessionId);
+  let session = sessions.find(s => s.sessionId === req.params.sessionId);
+  if (!session && req.body.projectKey) {
+    session = sessions.find(s => s.projectKey === req.body.projectKey);
+  }
   if (session) {
+    session.sessionId = req.params.sessionId;
     session.lastHeartbeat = new Date().toISOString();
     session.status = 'active';
     saveData();
@@ -102,8 +110,12 @@ app.post('/api/sessions/:sessionId/heartbeat', (req, res) => {
 });
 
 app.post('/api/sessions/:sessionId/log', (req, res) => {
-  const session = sessions.find(s => s.sessionId === req.params.sessionId);
+  let session = sessions.find(s => s.sessionId === req.params.sessionId);
+  if (!session && req.body.projectKey) {
+    session = sessions.find(s => s.projectKey === req.body.projectKey);
+  }
   if (session) {
+    session.sessionId = req.params.sessionId;
     session.lastActivity = req.body.description || req.body.action || '进行中';
     session.lastHeartbeat = new Date().toISOString();
     saveData();
@@ -123,7 +135,15 @@ app.delete('/api/sessions/:sessionId', (req, res) => {
 });
 
 app.get('/api/tasks', (req, res) => {
-  res.json({ tasks, sessions });
+  let filteredTasks = tasks;
+  if (req.query.sessionId) {
+    filteredTasks = tasks.filter(t => 
+      t.sessionId === req.query.sessionId || 
+      t.projectKey === req.query.sessionId ||
+      t.sessionId === parseInt(req.query.sessionId)
+    );
+  }
+  res.json({ tasks: filteredTasks, sessions });
 });
 
 app.post('/api/tasks', (req, res) => {

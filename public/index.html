@@ -188,19 +188,22 @@
           tasks = data.tasks || [];
           updateSummary(data.summary);
           if (expandedSessions.size === 0) {
-            sessions.forEach(s => expandedSessions.add(s.id || s.sessionId));
+            sessions.forEach(s => expandedSessions.add(s.id));
           }
           render();
         } else if (data.type === 'session:created') {
           sessions.push(data.session);
-          expandedSessions.add(data.session.id || data.session.sessionId);
+          expandedSessions.add(data.session.id);
           render();
         } else if (data.type === 'session:updated') {
           const idx = sessions.findIndex(s => s.id === data.session.id);
           if (idx !== -1) sessions[idx] = data.session;
+          else {
+            sessions.push(data.session);
+          }
           renderSessions();
         } else if (data.type === 'session:removed') {
-          sessions = sessions.filter(s => s.sessionId !== data.sessionId);
+          sessions = sessions.filter(s => s.id !== data.sessionId);
           render();
         } else if (data.type === 'task:created') {
           tasks.unshift(data.task);
@@ -229,7 +232,7 @@
       const tasksData = await tasksRes.json();
       sessions = sessionsData.sessions || [];
       tasks = tasksData.tasks || [];
-      sessions.forEach(s => expandedSessions.add(s.id || s.sessionId));
+      sessions.forEach(s => expandedSessions.add(s.id));
       updateSummary({
         totalSessions: sessions.length,
         activeSessions: sessions.filter(s => s.status === 'active').length,
@@ -285,17 +288,21 @@
       let html = '';
       
       for (const session of sessions) {
-        const sessionId = session.id || session.sessionId;
-        const sessionTasks = tasks.filter(t => t.sessionId === sessionId || t.id === sessionId);
-        const isExpanded = expandedSessions.has(sessionId);
+        const sessionDbId = session.id;
+        const projectKey = session.projectKey;
+        const sessionTasks = tasks.filter(t => 
+          t.sessionId === sessionDbId || 
+          t.projectKey === projectKey
+        );
+        const isExpanded = expandedSessions.has(sessionDbId);
         
         if (sessionTasks.length === 0) continue;
         
         const completedCount = sessionTasks.filter(t => t.status === 'completed').length;
         
         html += `
-          <div class="session-group" data-session="${escapeHtml(sessionId)}">
-            <div class="session-group-header" onclick="toggleSession('${escapeHtml(sessionId)}')">
+          <div class="session-group" data-session="${escapeHtml(sessionDbId)}">
+            <div class="session-group-header" onclick="toggleSession('${escapeHtml(sessionDbId)}')">
               <span class="toggle ${isExpanded ? 'expanded' : ''}">▶</span>
               <span class="session-icon">💻</span>
               <span class="session-name">${escapeHtml(session.projectName)}</span>
@@ -310,8 +317,11 @@
       }
 
       const unassignedTasks = tasks.filter(t => {
-        if (!t.sessionId) return true;
-        return !sessions.some(s => (s.id || s.sessionId) === t.sessionId);
+        if (!t.sessionId && !t.projectKey) return true;
+        return !sessions.some(s => 
+          t.sessionId === s.id || 
+          t.projectKey === s.projectKey
+        );
       });
 
       if (unassignedTasks.length > 0) {
