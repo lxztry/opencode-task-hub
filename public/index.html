@@ -145,12 +145,12 @@
         <div class="summary-label">活跃中</div>
       </div>
       <div class="summary-card">
-        <div class="summary-value" id="totalTasks">0</div>
-        <div class="summary-label">任务数</div>
+        <div class="summary-value" id="totalTokens">0</div>
+        <div class="summary-label">Token总量</div>
       </div>
       <div class="summary-card">
-        <div class="summary-value blue" id="activeTasks">0</div>
-        <div class="summary-label">进行中</div>
+        <div class="summary-value blue" id="totalTasks">0</div>
+        <div class="summary-label">任务数</div>
       </div>
       <div class="summary-card">
         <div class="summary-value green" id="completedTasks">0</div>
@@ -261,7 +261,8 @@
         activeSessions: allSessions.filter(s => s.status === 'active').length,
         totalTasks: tasks.length,
         activeTasks: tasks.filter(t => t.status === 'in_progress').length,
-        completedTasks: tasks.filter(t => t.status === 'completed').length
+        completedTasks: tasks.filter(t => t.status === 'completed').length,
+        tokenUsageSummary: sessionsData.tokenUsageSummary || { totalTokens: 0 }
       });
       render();
     }
@@ -290,11 +291,22 @@
     function updateSummary(summary) {
       document.getElementById('totalSessions').textContent = summary.totalSessions;
       document.getElementById('activeSessions').textContent = summary.activeSessions;
+      document.getElementById('totalTokens').textContent = formatNumber(summary.tokenUsageSummary?.totalTokens || 0);
       document.getElementById('totalTasks').textContent = summary.totalTasks;
-      document.getElementById('activeTasks').textContent = summary.activeTasks;
       document.getElementById('completedTasks').textContent = summary.completedTasks;
       document.getElementById('sessionCount').textContent = searchQuery ? getFilteredSessions().length : summary.totalSessions;
       document.getElementById('taskCount').textContent = tasks.length;
+    }
+
+    function formatNumber(num) {
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+      return num.toString();
+    }
+
+    function formatTokens(num) {
+      if (!num) return '0';
+      return formatNumber(num);
     }
 
     function render() {
@@ -314,6 +326,12 @@
       list.innerHTML = filteredSessions.map(s => {
         const sessionTasks = tasks.filter(t => t.sessionId === s.id || t.projectKey === s.projectKey);
         const isExpanded = expandedSessions.has(s.id);
+        const tokenUsage = s.tokenUsage || {};
+        const totalTokens = tokenUsage.totalTokens || 0;
+        const inputTokens = tokenUsage.inputTokens || 0;
+        const outputTokens = tokenUsage.outputTokens || 0;
+        const conversationCount = tokenUsage.conversationCount || 0;
+        const usageRate = conversationCount > 0 ? Math.round(totalTokens / conversationCount) : 0;
         return `
           <div class="session-card">
             <div class="session-info" style="flex:1;min-width:0;">
@@ -321,6 +339,7 @@
                 <span class="session-icon">💻</span>
                 <span class="session-name">${escapeHtml(s.projectName)}</span>
                 <span class="badge">${sessionTasks.length} 任务</span>
+                ${totalTokens > 0 ? `<span class="badge" style="background:#3b82f680;">${formatTokens(totalTokens)} tokens</span>` : ''}
                 <span class="badge">${(s.activities || []).length} 活动</span>
                 <span class="session-status ${s.status || 'active'}"></span>
                 <span style="color:#64748b;font-size:0.7rem;">${isExpanded ? '▲' : '▼'}</span>
@@ -329,6 +348,17 @@
               <div class="session-activity">${escapeHtml(s.lastActivity || '等待活动...')}</div>
             </div>
             <div class="session-detail ${isExpanded ? 'expanded' : ''}" id="detail-${escapeHtml(s.id)}" style="display:none;width:100%;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #334155;">
+              ${totalTokens > 0 ? `
+                <div style="margin-bottom:0.5rem;">
+                  <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">Token消耗:</div>
+                  <div style="display:flex;gap:1rem;font-size:0.7rem;">
+                    <div style="color:#22c55e;">📥 输入: ${formatTokens(inputTokens)}</div>
+                    <div style="color:#3b82f6;">📤 输出: ${formatTokens(outputTokens)}</div>
+                    <div style="color:#f59e0b;">💬 对话: ${conversationCount}</div>
+                    <div style="color:#94a3b8;">📊 平均: ${formatTokens(usageRate)}/次</div>
+                  </div>
+                </div>
+              ` : ''}
               ${sessionTasks.length > 0 ? `
                 <div style="margin-bottom:0.5rem;">
                   <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">任务列表:</div>

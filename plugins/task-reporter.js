@@ -93,6 +93,16 @@ async function logActivity(sessionId, projectKey, description) {
   await api(`/api/sessions/${sessionId}/log`, "POST", { projectKey, description });
 }
 
+async function reportTokenUsage(sessionId, projectKey, inputTokens, outputTokens, model, conversationCount) {
+  return await api(`/api/sessions/${sessionId}/token-usage`, "POST", {
+    projectKey,
+    inputTokens,
+    outputTokens,
+    model,
+    conversationCount
+  });
+}
+
 async function createTask(sessionId, title, priority = "medium", projectKey = null) {
   return await api("/api/tasks", "POST", {
     title,
@@ -104,32 +114,28 @@ async function createTask(sessionId, title, priority = "medium", projectKey = nu
   });
 }
 
-export const TaskReporterPlugin = async ({
-  project,
-  directory,
-}) => {
-  async function ensureSession(sessionID, cwd) {
-    const projectPath = cwd || directory || process.cwd();
-    const projectKey = `${os.hostname()}:${projectPath}`;
-    let sessionInfo = sessions.get(projectKey);
-    if (!sessionInfo) {
-      const projectName = project?.name || projectPath.split(/[/\\]/).pop() || "unknown";
-      const session = await registerSession(sessionID, projectPath, projectName);
-      if (session?.id) {
-        const heartbeatTimer = setInterval(async () => {
-          const si = sessions.get(projectKey);
-          if (si) {
-            await heartbeat(si.sessionId, projectKey);
-          }
-        }, HEARTBEAT_INTERVAL);
-        sessionInfo = { id: session.id, sessionId: sessionID, heartbeatTimer, projectName, projectPath, projectKey };
-        sessions.set(projectKey, sessionInfo);
-      }
-    } else {
-      sessionInfo.sessionId = sessionID;
+async function ensureSession(sessionID, cwd) {
+  const projectPath = cwd || directory || process.cwd();
+  const projectKey = `${os.hostname()}:${projectPath}`;
+  let sessionInfo = sessions.get(projectKey);
+  if (!sessionInfo) {
+    const projectName = project?.name || projectPath.split(/[/\\]/).pop() || "unknown";
+    const session = await registerSession(sessionID, projectPath, projectName);
+    if (session?.id) {
+      const heartbeatTimer = setInterval(async () => {
+        const si = sessions.get(projectKey);
+        if (si) {
+          await heartbeat(si.sessionId, projectKey);
+        }
+      }, HEARTBEAT_INTERVAL);
+      sessionInfo = { id: session.id, sessionId: sessionID, heartbeatTimer, projectName, projectPath, projectKey };
+      sessions.set(projectKey, sessionInfo);
     }
-    return sessionInfo;
+  } else {
+    sessionInfo.sessionId = sessionID;
   }
+  return sessionInfo;
+}
 
   return {
     tool: {
@@ -213,6 +219,31 @@ export const TaskReporterPlugin = async ({
           }
         },
       }),
+      reportTokenUsage: tool({
+        description: "上报token消耗统计",
+        args: {
+          inputTokens: tool.schema.number().describe("输入token数量"),
+          outputTokens: tool.schema.number().describe("输出token数量"),
+          model: tool.schema.string().optional().describe("使用的模型名称"),
+        },
+        async execute(args, { sessionID, directory: dir }) {
+          const sessionInfo = await ensureSession(sessionID, dir);
+          if (!sessionInfo) return { success: false };
+          try {
+            await reportTokenUsage(
+              sessionInfo.sessionId,
+              sessionInfo.projectKey,
+              args.inputTokens || 0,
+              args.outputTokens || 0,
+              args.model,
+              1
+            );
+            return { success: true };
+          } catch (e) {
+            return { success: false };
+          }
+        },
+      }),
     },
     "tool.execute.after": async (input, output) => {
       const sessionInfo = await ensureSession(input.sessionID, directory);
@@ -243,6 +274,21 @@ export const TaskReporterPlugin = async ({
         const sessionInfo = await ensureSession(input.sessionID, directory);
         if (sessionInfo) {
           await logActivity(sessionInfo.sessionId, sessionInfo.projectKey, `AI: ${input.agent}`);
+        }
+      }
+
+      const usage = output?.usage;
+      if (usage && (usage.inputTokens || usage.outputTokens || usage.completionTokens)) {
+        const sessionInfo = await ensureSession(input.sessionID, directory);
+        if (sessionInfo) {
+          await reportTokenUsage(
+            sessionInfo.sessionId,
+            sessionInfo.projectKey,
+            usage.inputTokens || 0,
+            usage.outputTokens || usage.completionTokens || 0,
+            usage.model,
+            1
+          );
         }
       }
     },

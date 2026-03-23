@@ -67,7 +67,18 @@ app.get('/api/sessions', (req, res) => {
       s.projectName.toLowerCase().includes(searchName)
     );
   }
-  res.json({ sessions: filteredSessions });
+  const totalInput = sessions.reduce((sum, s) => sum + (s.tokenUsage?.inputTokens || 0), 0);
+  const totalOutput = sessions.reduce((sum, s) => sum + (s.tokenUsage?.outputTokens || 0), 0);
+  const totalTokens = sessions.reduce((sum, s) => sum + (s.tokenUsage?.totalTokens || 0), 0);
+  res.json({ 
+    sessions: filteredSessions,
+    tokenUsageSummary: {
+      totalInputTokens: totalInput,
+      totalOutputTokens: totalOutput,
+      totalTokens: totalTokens,
+      sessionCount: sessions.length
+    }
+  });
 });
 
 app.post('/api/sessions/register', (req, res) => {
@@ -135,6 +146,37 @@ app.post('/api/sessions/:sessionId/log', (req, res) => {
     if (session.activities.length > 50) session.activities = session.activities.slice(0, 50);
     saveData();
     broadcast({ type: 'activity', session });
+  }
+  res.json({ ok: true });
+});
+
+app.post('/api/sessions/:sessionId/token-usage', (req, res) => {
+  let session = sessions.find(s => s.sessionId === req.params.sessionId);
+  if (!session && req.body.projectKey) {
+    session = sessions.find(s => s.projectKey === req.body.projectKey);
+  }
+  if (session) {
+    const { inputTokens, outputTokens, model, conversationCount } = req.body;
+    if (!session.tokenUsage) {
+      session.tokenUsage = {
+        inputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        conversationCount: 0,
+        lastUpdated: null
+      };
+    }
+    if (typeof inputTokens === 'number') session.tokenUsage.inputTokens += inputTokens;
+    if (typeof outputTokens === 'number') session.tokenUsage.outputTokens += outputTokens;
+    if (typeof inputTokens === 'number' && typeof outputTokens === 'number') {
+      session.tokenUsage.totalTokens += inputTokens + outputTokens;
+    }
+    if (typeof conversationCount === 'number') session.tokenUsage.conversationCount += conversationCount;
+    else session.tokenUsage.conversationCount += 1;
+    session.tokenUsage.lastUpdated = new Date().toISOString();
+    session.lastHeartbeat = new Date().toISOString();
+    saveData();
+    broadcast({ type: 'session:updated', session });
   }
   res.json({ ok: true });
 });
@@ -217,6 +259,9 @@ const server = createServer(app);
 wss = new WebSocketServer({ server });
 
 wss.on('connection', (ws) => {
+  const totalInput = sessions.reduce((sum, s) => sum + (s.tokenUsage?.inputTokens || 0), 0);
+  const totalOutput = sessions.reduce((sum, s) => sum + (s.tokenUsage?.outputTokens || 0), 0);
+  const totalTokens = sessions.reduce((sum, s) => sum + (s.tokenUsage?.totalTokens || 0), 0);
   ws.send(JSON.stringify({ 
     type: 'connected', 
     sessions,
@@ -226,7 +271,13 @@ wss.on('connection', (ws) => {
       activeSessions: sessions.filter(s => s.status === 'active').length,
       totalTasks: tasks.length,
       activeTasks: tasks.filter(t => t.status === 'in_progress').length,
-      completedTasks: tasks.filter(t => t.status === 'completed').length
+      completedTasks: tasks.filter(t => t.status === 'completed').length,
+      tokenUsageSummary: {
+        totalInputTokens: totalInput,
+        totalOutputTokens: totalOutput,
+        totalTokens: totalTokens,
+        sessionCount: sessions.length
+      }
     }
   }));
 });
