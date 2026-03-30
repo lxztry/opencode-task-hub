@@ -32,7 +32,7 @@
     .session-status.offline { background: #64748b; }
     .empty { text-align: center; padding: 2rem; color: #64748b; }
     .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
-    .summary { display: grid; grid-template-columns: repeat(5, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .summary { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
     .summary-card { background: #1e293b; border-radius: 10px; padding: 1rem; text-align: center; }
     .summary-value { font-size: 1.5rem; font-weight: 600; }
     .summary-label { font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; }
@@ -147,6 +147,18 @@
       <div class="summary-card">
         <div class="summary-value" id="totalTokens">0</div>
         <div class="summary-label">Token总量</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="inputTokens">0</div>
+        <div class="summary-label">输入Token</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="outputTokens">0</div>
+        <div class="summary-label">输出Token</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value orange" id="tokenRate">0/s</div>
+        <div class="summary-label">实时消费</div>
       </div>
       <div class="summary-card">
         <div class="summary-value blue" id="totalTasks">0</div>
@@ -292,8 +304,12 @@
       document.getElementById('totalSessions').textContent = summary.totalSessions;
       document.getElementById('activeSessions').textContent = summary.activeSessions;
       document.getElementById('totalTokens').textContent = formatNumber(summary.tokenUsageSummary?.totalTokens || 0);
+      document.getElementById('inputTokens').textContent = formatNumber(summary.tokenUsageSummary?.totalInputTokens || 0);
+      document.getElementById('outputTokens').textContent = formatNumber(summary.tokenUsageSummary?.totalOutputTokens || 0);
       document.getElementById('totalTasks').textContent = summary.totalTasks;
       document.getElementById('completedTasks').textContent = summary.completedTasks;
+      const rate = summary.tokenUsageSummary?.totalRatePerSecond || 0;
+      document.getElementById('tokenRate').textContent = rate > 0 ? formatNumber(rate) + '/s' : '0/s';
       document.getElementById('sessionCount').textContent = searchQuery ? getFilteredSessions().length : summary.totalSessions;
       document.getElementById('taskCount').textContent = tasks.length;
     }
@@ -332,6 +348,8 @@
         const outputTokens = tokenUsage.outputTokens || 0;
         const conversationCount = tokenUsage.conversationCount || 0;
         const usageRate = conversationCount > 0 ? Math.round(totalTokens / conversationCount) : 0;
+        const tokenRate = s.tokenRate || {};
+        const ratePerMin = tokenRate.perMinute || 0;
         return `
           <div class="session-card">
             <div class="session-info" style="flex:1;min-width:0;">
@@ -340,6 +358,7 @@
                 <span class="session-name">${escapeHtml(s.projectName)}</span>
                 <span class="badge">${sessionTasks.length} 任务</span>
                 ${totalTokens > 0 ? `<span class="badge" style="background:#3b82f680;">${formatTokens(totalTokens)} tokens</span>` : ''}
+                ${ratePerMin > 0 ? `<span class="badge" style="background:#f59e0b80;">${formatTokens(ratePerMin)}/min</span>` : ''}
                 <span class="badge">${(s.activities || []).length} 活动</span>
                 <span class="session-status ${s.status || 'active'}"></span>
                 <span style="color:#64748b;font-size:0.7rem;">${isExpanded ? '▲' : '▼'}</span>
@@ -351,11 +370,20 @@
               ${totalTokens > 0 ? `
                 <div style="margin-bottom:0.5rem;">
                   <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">Token消耗:</div>
-                  <div style="display:flex;gap:1rem;font-size:0.7rem;">
+                  <div style="display:flex;gap:1rem;font-size:0.7rem;flex-wrap:wrap;">
                     <div style="color:#22c55e;">📥 输入: ${formatTokens(inputTokens)}</div>
                     <div style="color:#3b82f6;">📤 输出: ${formatTokens(outputTokens)}</div>
                     <div style="color:#f59e0b;">💬 对话: ${conversationCount}</div>
                     <div style="color:#94a3b8;">📊 平均: ${formatTokens(usageRate)}/次</div>
+                  </div>
+                </div>
+              ` : ''}
+              ${ratePerMin > 0 ? `
+                <div style="margin-bottom:0.5rem;">
+                  <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">实时消费:</div>
+                  <div style="display:flex;gap:1rem;font-size:0.7rem;">
+                    <div style="color:#f59e0b;">⚡ ${formatTokens(tokenRate.perSecond || 0)}/秒</div>
+                    <div style="color:#f59e0b;">🔥 ${formatTokens(ratePerMin)}/分钟</div>
                   </div>
                 </div>
               ` : ''}

@@ -10,8 +10,19 @@ import os from 'os';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const DATA_FILE = path.join(__dirname, 'data.json');
-const PORT = 3030;
+const PORT = process.env.PORT || 3030;
+const API_KEY = process.env.API_KEY || '';
 const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
+const API_KEY_HEADER = 'x-api-key';
+
+function authenticate(req, res, next) {
+  if (!API_KEY) return next();
+  const providedKey = req.headers[API_KEY_HEADER] || req.query.apiKey;
+  if (providedKey !== API_KEY) {
+    return res.status(401).json({ error: 'Unauthorized: invalid or missing API key' });
+  }
+  next();
+}
 
 const app = express();
 app.use(cors());
@@ -59,6 +70,22 @@ function broadcast(data) {
 
 let wss;
 
+function calculateRate(history, seconds = 60) {
+  if (!history || history.length < 2) return 0;
+  const now = Date.now();
+  const cutoff = now - seconds * 1000;
+  const recent = history.filter(h => h.timestamp > cutoff);
+  if (recent.length < 2) return 0;
+  const first = recent[0];
+  const last = recent[recent.length - 1];
+  const timeDiff = (last.timestamp - first.timestamp) / 1000;
+  if (timeDiff <= 0) return 0;
+  return Math.round((last.tokens - first.tokens) / timeDiff);
+}
+
+app.use('/api/sessions', authenticate);
+app.use('/api/tasks', authenticate);
+
 app.get('/api/sessions', (req, res) => {
   let filteredSessions = sessions;
   if (req.query.projectName) {
@@ -70,13 +97,31 @@ app.get('/api/sessions', (req, res) => {
   const totalInput = sessions.reduce((sum, s) => sum + (s.tokenUsage?.inputTokens || 0), 0);
   const totalOutput = sessions.reduce((sum, s) => sum + (s.tokenUsage?.outputTokens || 0), 0);
   const totalTokens = sessions.reduce((sum, s) => sum + (s.tokenUsage?.totalTokens || 0), 0);
+  
+  const sessionsWithRate = filteredSessions.map(s => {
+    const history = s.tokenUsage?.history || [];
+    const ratePerSecond = calculateRate(history, 60);
+    const ratePerMinute = ratePerSecond * 60;
+    return {
+      ...s,
+      tokenRate: {
+        perSecond: ratePerSecond,
+        perMinute: ratePerMinute
+      }
+    };
+  });
+  
+  const totalRatePerSecond = sessionsWithRate.reduce((sum, s) => sum + (s.tokenRate?.perSecond || 0), 0);
+  
   res.json({ 
-    sessions: filteredSessions,
+    sessions: sessionsWithRate,
     tokenUsageSummary: {
       totalInputTokens: totalInput,
       totalOutputTokens: totalOutput,
       totalTokens: totalTokens,
-      sessionCount: sessions.length
+      sessionCount: sessions.length,
+      totalRatePerSecond: totalRatePerSecond,
+      totalRatePerMinute: totalRatePerSecond * 60
     }
   });
 });
@@ -151,34 +196,67 @@ app.post('/api/sessions/:sessionId/log', (req, res) => {
 });
 
 app.post('/api/sessions/:sessionId/token-usage', (req, res) => {
-  let session = sessions.find(s => s.sessionId === req.params.sessionId);
-  if (!session && req.body.projectKey) {
-    session = sessions.find(s => s.projectKey === req.body.projectKey);
+  const targetSessionId = req.params.sessionId;
+  const projectKey = req.body.projectKey;
+  
+  let session = sessions.find(s => s.sessionId === targetSessionId);
+  if (!session && projectKey) {
+    session = sessions.find(s => s.projectKey === projectKey);
   }
+  if (!session && req.body.id) {
+    session = sessions.find(s => s.id === req.body.id);
+  }
+  
   if (session) {
-    const { inputTokens, outputTokens, model, conversationCount } = req.body;
+    const { inputTokens, outputTokens, model, conversationCount, totalTokens: bodyTotalTokens } = req.body;
     if (!session.tokenUsage) {
       session.tokenUsage = {
         inputTokens: 0,
         outputTokens: 0,
         totalTokens: 0,
         conversationCount: 0,
-        lastUpdated: null
+        lastUpdated: null,
+        history: []
       };
     }
-    if (typeof inputTokens === 'number') session.tokenUsage.inputTokens += inputTokens;
-    if (typeof outputTokens === 'number') session.tokenUsage.outputTokens += outputTokens;
-    if (typeof inputTokens === 'number' && typeof outputTokens === 'number') {
-      session.tokenUsage.totalTokens += inputTokens + outputTokens;
+    const now = Date.now();
+    
+    if (typeof bodyTotalTokens === 'number' && bodyTotalTokens > 0) {
+      const prevTotal = session.tokenUsage.totalTokens;
+      const increment = bodyTotalTokens - prevTotal;
+      if (increment > 0) {
+        if (!session.tokenUsage.history) session.tokenUsage.history = [];
+        session.tokenUsage.history.push({ timestamp: now, tokens: increment });
+        if (session.tokenUsage.history.length > 100) {
+          session.tokenUsage.history = session.tokenUsage.history.slice(-100);
+        }
+        session.tokenUsage.totalTokens = bodyTotalTokens;
+      }
+    } else {
+      const incrementTokens = (inputTokens || 0) + (outputTokens || 0);
+      if (incrementTokens > 0) {
+        if (!session.tokenUsage.history) session.tokenUsage.history = [];
+        session.tokenUsage.history.push({ timestamp: now, tokens: incrementTokens });
+        if (session.tokenUsage.history.length > 100) {
+          session.tokenUsage.history = session.tokenUsage.history.slice(-100);
+        }
+        if (typeof inputTokens === 'number') session.tokenUsage.inputTokens += inputTokens;
+        if (typeof outputTokens === 'number') session.tokenUsage.outputTokens += outputTokens;
+        session.tokenUsage.totalTokens += incrementTokens;
+      }
     }
-    if (typeof conversationCount === 'number') session.tokenUsage.conversationCount += conversationCount;
-    else session.tokenUsage.conversationCount += 1;
+    
+    if (typeof conversationCount === 'number') {
+      session.tokenUsage.conversationCount = Math.max(session.tokenUsage.conversationCount, conversationCount);
+    }
     session.tokenUsage.lastUpdated = new Date().toISOString();
     session.lastHeartbeat = new Date().toISOString();
     saveData();
     broadcast({ type: 'session:updated', session });
+  } else {
+    console.warn(`Token usage update failed: session not found. sessionId=${targetSessionId}, projectKey=${projectKey}`);
   }
-  res.json({ ok: true });
+  res.json({ ok: !!session });
 });
 
 app.delete('/api/sessions/:sessionId', (req, res) => {
@@ -262,9 +340,24 @@ wss.on('connection', (ws) => {
   const totalInput = sessions.reduce((sum, s) => sum + (s.tokenUsage?.inputTokens || 0), 0);
   const totalOutput = sessions.reduce((sum, s) => sum + (s.tokenUsage?.outputTokens || 0), 0);
   const totalTokens = sessions.reduce((sum, s) => sum + (s.tokenUsage?.totalTokens || 0), 0);
+  
+  const sessionsWithRate = sessions.map(s => {
+    const history = s.tokenUsage?.history || [];
+    const ratePerSecond = calculateRate(history, 60);
+    return {
+      ...s,
+      tokenRate: {
+        perSecond: ratePerSecond,
+        perMinute: ratePerSecond * 60
+      }
+    };
+  });
+  
+  const totalRatePerSecond = sessionsWithRate.reduce((sum, s) => sum + (s.tokenRate?.perSecond || 0), 0);
+  
   ws.send(JSON.stringify({ 
     type: 'connected', 
-    sessions,
+    sessions: sessionsWithRate,
     tasks,
     summary: {
       totalSessions: sessions.length,
@@ -276,7 +369,9 @@ wss.on('connection', (ws) => {
         totalInputTokens: totalInput,
         totalOutputTokens: totalOutput,
         totalTokens: totalTokens,
-        sessionCount: sessions.length
+        sessionCount: sessions.length,
+        totalRatePerSecond: totalRatePerSecond,
+        totalRatePerMinute: totalRatePerSecond * 60
       }
     }
   }));
