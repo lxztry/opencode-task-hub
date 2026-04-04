@@ -8,8 +8,15 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 import os from 'os';
 
+// Import our new modules
+import { Database } from './src/database.js';
+import { EnhancedTaskManager } from './src/enhanced-task-manager.js';
+import { SessionManager } from './src/session-manager.js';
+import { AIEnhancer } from './src/ai-enhancer.js';
+import { WebhookManager, webhookManager } from './src/webhook-manager.js';
+import { Analytics } from './src/analytics.js';
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
-const DATA_FILE = path.join(__dirname, 'data.json');
 const PORT = process.env.PORT || 3030;
 const API_KEY = process.env.API_KEY || '';
 const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes
@@ -29,6 +36,17 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// Initialize modules
+const db = new Database(path.join(__dirname, 'data', 'taskhub.db'));
+const taskManager = new EnhancedTaskManager(db);
+const sessionManager = taskManager.getSessionManager();
+const aiEnhancer = new AIEnhancer();
+const webhookManager = webhookManager;
+const analytics = taskManager.getAnalytics();
+
+// ============== Legacy Data (from JSON file) ==============
+
+const DATA_FILE = path.join(__dirname, 'data.json');
 let sessions = [];
 let tasks = [];
 
@@ -83,8 +101,16 @@ function calculateRate(history, seconds = 60) {
   return Math.round((last.tokens - first.tokens) / timeDiff);
 }
 
+// ============== API Routes ==============
+
 app.use('/api/sessions', authenticate);
 app.use('/api/tasks', authenticate);
+app.use('/api/enhanced', authenticate);
+app.use('/api/ai', authenticate);
+app.use('/api/webhooks', authenticate);
+app.use('/api/analytics', authenticate);
+
+// ============== Original Session APIs ==============
 
 app.get('/api/sessions', (req, res) => {
   let filteredSessions = sessions;
@@ -275,6 +301,390 @@ app.get('/api/sessions/:id/activities', (req, res) => {
   res.json({ activities: session.activities || [] });
 });
 
+// ============== Enhanced Session APIs (New) ==============
+
+app.get('/api/enhanced/sessions', (req, res) => {
+  const { status, type, search } = req.query;
+  
+  let result = sessionManager.getAllSessions();
+  
+  if (status) {
+    result = sessionManager.getSessionsByStatus(status);
+  }
+  if (type) {
+    result = sessionManager.getSessionsByType(type);
+  }
+  if (search) {
+    result = sessionManager.searchSessions(search);
+  }
+  
+  res.json({ sessions: result });
+});
+
+app.post('/api/enhanced/sessions', async (req, res) => {
+  try {
+    const session = await sessionManager.createSession({
+      name: req.body.name,
+      description: req.body.description,
+      type: req.body.type,
+      parentId: req.body.parentId,
+      agentType: req.body.agentType,
+      tags: req.body.tags,
+      creator: req.body.creator || 'system',
+      priority: req.body.priority
+    });
+    
+    await webhookManager.onSessionCreated(session);
+    res.json(session);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/enhanced/sessions/:id', (req, res) => {
+  const session = sessionManager.getSession(req.params.id);
+  if (!session) return res.status(404).json({ error: 'Session not found' });
+  res.json(session);
+});
+
+app.put('/api/enhanced/sessions/:id', async (req, res) => {
+  try {
+    const session = await sessionManager.updateSession(req.params.id, req.body);
+    if (!session) return res.status(404).json({ error: 'Session not found' });
+    res.json(session);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/enhanced/sessions/:id', async (req, res) => {
+  try {
+    const result = await sessionManager.deleteSession(req.params.id);
+    res.json({ success: result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/enhanced/sessions/:id/tree', (req, res) => {
+  const tree = sessionManager.getSessionTree(req.params.id);
+  if (!tree) return res.status(404).json({ error: 'Session not found' });
+  res.json(tree);
+});
+
+app.post('/api/enhanced/sessions/:id/checkpoint', async (req, res) => {
+  try {
+    const checkpoint = await sessionManager.createCheckpoint(
+      req.params.id,
+      req.body.name || `Checkpoint ${Date.now()}`
+    );
+    if (!checkpoint) return res.status(404).json({ error: 'Session not found' });
+    res.json(checkpoint);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/enhanced/sessions/:id/restore/:checkpointId', async (req, res) => {
+  try {
+    const result = await sessionManager.restoreCheckpoint(req.params.id, req.params.checkpointId);
+    res.json({ success: result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============== Enhanced Task APIs (New) ==============
+
+app.get('/api/enhanced/tasks', (req, res) => {
+  res.json({ tasks: taskManager.getAllTasks() });
+});
+
+app.post('/api/enhanced/tasks', async (req, res) => {
+  try {
+    const task = await taskManager.createTask({
+      title: req.body.title,
+      description: req.body.description,
+      priority: req.body.priority,
+      assignee: req.body.assignee,
+      tags: req.body.tags,
+      sessionId: req.body.sessionId,
+      estimatedHours: req.body.estimatedHours,
+      dueDate: req.body.dueDate
+    });
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/enhanced/tasks/from-text', async (req, res) => {
+  try {
+    const task = await taskManager.createTaskFromText(req.body.text, req.body.creator || 'system');
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/enhanced/tasks/:id', (req, res) => {
+  const task = taskManager.getTask(req.params.id);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  res.json(task);
+});
+
+app.put('/api/enhanced/tasks/:id', async (req, res) => {
+  try {
+    const task = await taskManager.updateTask(req.params.id, req.body);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.delete('/api/enhanced/tasks/:id', async (req, res) => {
+  try {
+    const result = await taskManager.deleteTask(req.params.id);
+    res.json({ success: result });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Subtasks
+app.post('/api/enhanced/tasks/:id/subtasks', async (req, res) => {
+  try {
+    const task = await taskManager.addSubtask(req.params.id, req.body.title);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/enhanced/tasks/:id/subtasks/:subtaskId/toggle', async (req, res) => {
+  try {
+    const task = await taskManager.toggleSubtask(req.params.id, req.params.subtaskId);
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Comments
+app.post('/api/enhanced/tasks/:id/comments', async (req, res) => {
+  try {
+    const task = await taskManager.addComment(
+      req.params.id,
+      req.body.author,
+      req.body.content,
+      req.body.mentions
+    );
+    if (!task) return res.status(404).json({ error: 'Task not found' });
+    res.json(task);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============== Board APIs (New) ==============
+
+app.get('/api/enhanced/boards', (req, res) => {
+  res.json({ boards: taskManager.getAllBoards() });
+});
+
+app.get('/api/enhanced/boards/:id', (req, res) => {
+  const board = taskManager.getBoard(req.params.id);
+  if (!board) return res.status(404).json({ error: 'Board not found' });
+  res.json(board);
+});
+
+app.post('/api/enhanced/boards', (req, res) => {
+  const board = taskManager.createBoard({
+    name: req.body.name,
+    type: req.body.type,
+    columns: req.body.columns
+  });
+  res.json(board);
+});
+
+app.put('/api/enhanced/boards/:id/filter', (req, res) => {
+  taskManager.setBoardFilter(req.params.id, req.body.filters);
+  const board = taskManager.getBoard(req.params.id);
+  res.json(board);
+});
+
+// ============== AI APIs (New) ==============
+
+app.post('/api/ai/analyze/:taskId', async (req, res) => {
+  try {
+    const analysis = await taskManager.analyzeTask(req.params.taskId);
+    if (!analysis) return res.status(404).json({ error: 'Task not found' });
+    res.json(analysis);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/ai/suggest/:taskId', async (req, res) => {
+  try {
+    const suggestion = await taskManager.suggestAssignee(req.params.taskId);
+    if (!suggestion) return res.status(404).json({ error: 'Task not found' });
+    res.json(suggestion);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/ai/parse', async (req, res) => {
+  try {
+    const parsed = await taskManager.parseNaturalLanguage(req.body.text);
+    res.json(parsed);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/ai/summarize/:sessionId', async (req, res) => {
+  try {
+    const summary = await taskManager.generateSessionSummary(req.params.sessionId);
+    if (!summary) return res.status(404).json({ error: 'Session not found' });
+    res.json({ summary });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/ai/risks', async (req, res) => {
+  try {
+    const risks = await taskManager.detectRisks();
+    res.json({ risks });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/ai/forecast', async (req, res) => {
+  try {
+    const forecast = await taskManager.forecastSprint(
+      req.body.teamSize || 3,
+      req.body.days || 14
+    );
+    res.json(forecast);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============== Webhook APIs (New) ==============
+
+app.get('/api/webhooks', (req, res) => {
+  res.json({ webhooks: webhookManager.getAllWebhooks() });
+});
+
+app.post('/api/webhooks', (req, res) => {
+  const webhook = webhookManager.createWebhook({
+    url: req.body.url,
+    events: req.body.events,
+    secret: req.body.secret
+  });
+  res.json(webhook);
+});
+
+app.delete('/api/webhooks/:id', (req, res) => {
+  const result = webhookManager.deleteWebhook(req.params.id);
+  res.json({ success: result });
+});
+
+app.put('/api/webhooks/:id/toggle', (req, res) => {
+  const result = webhookManager.toggleWebhook(req.params.id, req.body.active);
+  res.json({ success: result });
+});
+
+// GitHub Integration
+app.post('/api/webhooks/github/link', async (req, res) => {
+  try {
+    const result = await webhookManager.linkGitHubPR(req.body.taskId, req.body.prUrl);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============== Analytics APIs (New) ==============
+
+app.get('/api/analytics/summary', (req, res) => {
+  const performance = analytics.getTeamPerformance(30);
+  res.json({
+    teamPerformance: performance,
+    taskStats: {
+      total: taskManager.getAllTasks().length,
+      completed: taskManager.getAllTasks().filter(t => t.status === 'done').length,
+      inProgress: taskManager.getAllTasks().filter(t => t.status === 'in-progress').length,
+      backlog: taskManager.getAllTasks().filter(t => t.status === 'backlog').length
+    }
+  });
+});
+
+app.get('/api/analytics/velocity', (req, res) => {
+  const days = parseInt(req.query.days) || 14;
+  const velocity = analytics.calculateVelocity('current', days);
+  res.json(velocity);
+});
+
+app.get('/api/analytics/team-performance', (req, res) => {
+  const days = parseInt(req.query.days) || 30;
+  const performance = analytics.getTeamPerformance(days);
+  res.json({ performance });
+});
+
+app.get('/api/analytics/burndown', (req, res) => {
+  const days = parseInt(req.query.days) || 14;
+  const startDate = Date.now() - days * 86400000;
+  const endDate = Date.now();
+  const totalTasks = taskManager.getAllTasks().length;
+  const burndown = analytics.generateBurndown(startDate, endDate, totalTasks);
+  res.json({ burndown });
+});
+
+app.get('/api/analytics/sprint-report', async (req, res) => {
+  try {
+    const sprintId = req.query.sprintId || 'current';
+    const report = await taskManager.getSprintReport(sprintId);
+    if (!report) return res.status(404).json({ error: 'Sprint not found' });
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/analytics/time-report', (req, res) => {
+  const { userId, startDate, endDate } = req.query;
+  const report = analytics.getTimeReport(
+    userId,
+    startDate ? parseInt(startDate) : undefined,
+    endDate ? parseInt(endDate) : undefined
+  );
+  res.json(report);
+});
+
+// Sprint APIs
+app.post('/api/enhanced/sprints', async (req, res) => {
+  try {
+    const sprint = await taskManager.createSprint(
+      req.body.name,
+      req.body.days || 14
+    );
+    res.json(sprint);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// ============== Original Task APIs (Legacy) ==============
+
 app.get('/api/tasks', (req, res) => {
   let filteredTasks = tasks;
   if (req.query.sessionId) {
@@ -333,6 +743,8 @@ app.post('/api/tasks/:id/assign', (req, res) => {
   res.json(task);
 });
 
+// ============== WebSocket ==============
+
 const server = createServer(app);
 wss = new WebSocketServer({ server });
 
@@ -382,5 +794,13 @@ server.listen(PORT, () => {
   setInterval(cleanExpiredSessions, 60 * 1000); // 每分钟检查一次
   console.log(`\n🎯 OpenCode Task Hub 运行中!`);
   console.log(`   仪表板: http://localhost:${PORT}`);
-  console.log(`   ${sessions.length} 个会话已注册\n`);
+  console.log(`   ${sessions.length} 个会话已注册`);
+  console.log(`\n📊 新增API:`);
+  console.log(`   /api/enhanced/sessions  - 会话管理`);
+  console.log(`   /api/enhanced/tasks     - 增强任务`);
+  console.log(`   /api/enhanced/boards   - 多看板`);
+  console.log(`   /api/ai/*              - AI分析`);
+  console.log(`   /api/webhooks/*        - Webhooks`);
+  console.log(`   /api/analytics/*       - 数据分析`);
+  console.log();
 });
