@@ -1,0 +1,405 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenCode Task Hub - AI 驱动的任务管理系统</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        
+        :root {
+            --primary: #6366f1;
+            --primary-dark: #4f46e5;
+            --secondary: #10b981;
+            --bg: #0f172a;
+            --card-bg: #1e293b;
+            --text: #f1f5f9;
+            --text-muted: #94a3b8;
+        }
+        
+        body {
+            font-family: 'Segoe UI', system-ui, sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            min-height: 100vh;
+            line-height: 1.6;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 2rem;
+        }
+        
+        /* Hero */
+        .hero {
+            padding: 6rem 0;
+            text-align: center;
+            background: linear-gradient(180deg, rgba(99,102,241,0.1) 0%, transparent 100%);
+        }
+        
+        .hero h1 {
+            font-size: 3.5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, var(--primary), var(--secondary));
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+        
+        .hero p {
+            font-size: 1.25rem;
+            color: var(--text-muted);
+            max-width: 600px;
+            margin: 0 auto 2rem;
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            background: rgba(99,102,241,0.2);
+            border: 1px solid var(--primary);
+            border-radius: 2rem;
+            font-size: 0.875rem;
+            color: var(--primary);
+            margin-bottom: 1.5rem;
+        }
+        
+        /* CTA Buttons */
+        .cta-group {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .btn {
+            padding: 0.875rem 2rem;
+            border-radius: 0.5rem;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: var(--primary-dark);
+            transform: translateY(-2px);
+        }
+        
+        .btn-secondary {
+            background: var(--card-bg);
+            color: var(--text);
+            border: 1px solid #334155;
+        }
+        
+        .btn-secondary:hover {
+            border-color: var(--primary);
+        }
+        
+        /* Features */
+        .features {
+            padding: 5rem 0;
+        }
+        
+        .section-title {
+            text-align: center;
+            font-size: 2rem;
+            margin-bottom: 3rem;
+        }
+        
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+        
+        .feature-card {
+            background: var(--card-bg);
+            padding: 2rem;
+            border-radius: 1rem;
+            border: 1px solid #334155;
+            transition: all 0.3s;
+        }
+        
+        .feature-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-4px);
+        }
+        
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            background: rgba(99,102,241,0.2);
+            border-radius: 0.75rem;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+            margin-bottom: 1rem;
+        }
+        
+        .feature-card h3 {
+            font-size: 1.25rem;
+            margin-bottom: 0.75rem;
+        }
+        
+        .feature-card p {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+        }
+        
+        /* Architecture */
+        .architecture {
+            padding: 5rem 0;
+            background: rgba(30,41,59,0.5);
+        }
+        
+        .arch-diagram {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 2rem;
+            margin-top: 2rem;
+            font-family: 'Consolas', monospace;
+            overflow-x: auto;
+        }
+        
+        .arch-diagram pre {
+            color: #a5f3fc;
+        }
+        
+        /* API */
+        .api-section {
+            padding: 5rem 0;
+        }
+        
+        .api-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1rem;
+        }
+        
+        .api-endpoint {
+            background: var(--card-bg);
+            padding: 1rem 1.5rem;
+            border-radius: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+        }
+        
+        .method {
+            padding: 0.25rem 0.75rem;
+            border-radius: 0.25rem;
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+        }
+        
+        .method-get { background: #059669; color: white; }
+        .method-post { background: #2563eb; color: white; }
+        
+        .endpoint-path {
+            font-family: monospace;
+            color: var(--text-muted);
+            font-size: 0.9rem;
+        }
+        
+        /* Footer */
+        footer {
+            padding: 3rem 0;
+            text-align: center;
+            color: var(--text-muted);
+            border-top: 1px solid #334155;
+        }
+        
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+        }
+        
+        /* Quick Start */
+        .quickstart {
+            padding: 5rem 0;
+        }
+        
+        .code-block {
+            background: #0d1117;
+            border-radius: 0.75rem;
+            padding: 1.5rem;
+            margin-top: 1.5rem;
+            overflow-x: auto;
+        }
+        
+        .code-block pre {
+            color: #c9d1d9;
+            font-family: 'Consolas', 'Monaco', monospace;
+            font-size: 0.9rem;
+            line-height: 1.5;
+        }
+        
+        .code-block code {
+            color: #c9d1d9;
+        }
+        
+        .comment { color: #8b949e; }
+        .keyword { color: #ff7b72; }
+        .string { color: #a5d6ff; }
+        .function { color: #d2a8ff; }
+    </style>
+</head>
+<body>
+    <section class="hero">
+        <div class="container">
+            <span class="badge">🚀 多会话智能管理</span>
+            <h1>OpenCode Task Hub</h1>
+            <p>AI 驱动的任务管理系统，支持智能分配、风险检测、Sprint 预测和团队协作</p>
+            <div class="cta-group">
+                <a href="https://github.com/lxztry/opencode-task-hub" class="btn btn-primary">
+                    📦 GitHub
+                </a>
+                <a href="https://discord.gg/opencode" class="btn btn-secondary">
+                    💬 加入社区
+                </a>
+            </div>
+        </div>
+    </section>
+    
+    <section class="features">
+        <div class="container">
+            <h2 class="section-title">✨ 核心功能</h2>
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>AI 智能分配</h3>
+                    <p>基于技能匹配度和可用性自动推荐最佳任务负责人，提高团队效率</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Sprint 预测</h3>
+                    <p>智能预测 Sprint 完成时间，识别潜在风险，提前预警延期可能</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔗</div>
+                    <h3>会话管理</h3>
+                    <p>树形会话结构，支持 Checkpoint 快照，随时回滚到任意状态</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <h3>燃尽图 & Velocity</h3>
+                    <p>实时追踪 Sprint 进度，可视化团队产能，科学规划未来迭代</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔌</div>
+                    <h3>Webhook 集成</h3>
+                    <p>支持 GitHub PR 关联、日历同步、飞书/Discord 通知</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">⚡</div>
+                    <h3>实时协作</h3>
+                    <p>WebSocket 实时推送，多人同时在线，光标位置同步</p>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="architecture">
+        <div class="container">
+            <h2 class="section-title">🏗️ 系统架构</h2>
+            <div class="arch-diagram">
+                <pre>
+OpenCode Task Hub
+├── Gateway Server (HTTP + WebSocket)
+├── Session Manager (树形结构 + Checkpoint)
+├── Task Manager (增强看板)
+│   ├── AI Enhancer (智能分析)
+│   ├── Webhook Manager (外部集成)
+│   └── Analytics Engine (数据报表)
+├── Database (SQLite/PostgreSQL)
+└── Channel Plugins (CLI / Web / API)</pre>
+            </div>
+        </div>
+    </section>
+    
+    <section class="api-section">
+        <div class="container">
+            <h2 class="section-title">🔌 API 接口</h2>
+            <div class="api-grid">
+                <div class="api-endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/enhanced/sessions</span>
+                </div>
+                <div class="api-endpoint">
+                    <span class="method method-post">POST</span>
+                    <span class="endpoint-path">/api/enhanced/sessions</span>
+                </div>
+                <div class="api-endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/ai/analyze/:taskId</span>
+                </div>
+                <div class="api-endpoint">
+                    <span class="method method-post">POST</span>
+                    <span class="endpoint-path">/api/ai/suggest/:taskId</span>
+                </div>
+                <div class="api-endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/analytics/velocity</span>
+                </div>
+                <div class="api-endpoint">
+                    <span class="method method-get">GET</span>
+                    <span class="endpoint-path">/api/webhooks</span>
+                </div>
+            </div>
+        </div>
+    </section>
+    
+    <section class="quickstart">
+        <div class="container">
+            <h2 class="section-title">🚀 快速开始</h2>
+            <div class="code-block">
+                <pre><code><span class="comment"># 克隆项目</span>
+git clone https://github.com/lxztry/opencode-task-hub.git
+cd opencode-task-hub
+
+<span class="comment"># 安装依赖</span>
+npm install
+
+<span class="comment"># 启动服务</span>
+npm start
+
+<span class="comment"># 访问Dashboard</span>
+<span class="function">http://localhost:3030</span>
+
+<span class="comment"># 创建会话</span>
+curl -X POST http://localhost:3030/api/enhanced/sessions \
+  -H "Content-Type: application/json" \
+  -d '{"name":"Sprint 1","type":"sprint"}'
+
+<span class="comment"># AI 任务分析</span>
+curl http://localhost:3030/api/ai/analyze/task_123</code></pre>
+            </div>
+        </div>
+    </section>
+    
+    <footer>
+        <div class="container">
+            <p>
+                <a href="https://github.com/lxztry/opencode-task-hub">GitHub</a> · 
+                <a href="https://github.com/lxztry/opencode-task-hub/discussions">讨论</a> · 
+                <a href="https://github.com/lxztry/opencode-task-hub/issues">问题反馈</a>
+            </p>
+            <p style="margin-top: 1rem; font-size: 0.875rem;">
+                Made with ❤️ by <a href="https://github.com/lxztry">lxztry</a>
+            </p>
+        </div>
+    </footer>
+</body>
+</html>
