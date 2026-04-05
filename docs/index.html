@@ -220,17 +220,17 @@
             color: var(--text-muted);
             border-top: 1px solid #334155;
         }
-        
+
         footer a {
             color: var(--primary);
             text-decoration: none;
         }
-        
+
         /* Quick Start */
         .quickstart {
             padding: 5rem 0;
         }
-        
+
         .code-block {
             background: #0d1117;
             border-radius: 0.75rem;
@@ -238,30 +238,132 @@
             margin-top: 1.5rem;
             overflow-x: auto;
         }
-        
+
         .code-block pre {
             color: #c9d1d9;
             font-family: 'Consolas', 'Monaco', monospace;
             font-size: 0.9rem;
             line-height: 1.5;
         }
-        
+
         .code-block code {
             color: #c9d1d9;
         }
-        
+
         .comment { color: #8b949e; }
         .keyword { color: #ff7b72; }
         .string { color: #a5d6ff; }
         .function { color: #d2a8ff; }
+
+        /* Cognitive Load Section */
+        .cognitive-load {
+            padding: 5rem 0;
+            background: rgba(30,41,59,0.5);
+        }
+
+        .load-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 1.5rem;
+            margin-top: 2rem;
+        }
+
+        .load-card {
+            background: var(--card-bg);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            border: 1px solid #334155;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .load-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+
+        .load-card.phase1::before { background: #22c55e; }
+        .load-card.phase2::before { background: #3b82f6; }
+        .load-card.phase3::before { background: #f59e0b; }
+        .load-card.phase4::before { background: #ef4444; }
+
+        .load-phase {
+            font-size: 0.75rem;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.5rem;
+        }
+
+        .load-card.phase1 .load-phase { color: #22c55e; }
+        .load-card.phase2 .load-phase { color: #3b82f6; }
+        .load-card.phase3 .load-phase { color: #f59e0b; }
+        .load-card.phase4 .load-phase { color: #ef4444; }
+
+        .load-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 0.75rem;
+        }
+
+        .load-card p {
+            color: var(--text-muted);
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .load-features {
+            list-style: none;
+            font-size: 0.85rem;
+        }
+
+        .load-features li {
+            padding: 0.25rem 0;
+            color: var(--text-muted);
+        }
+
+        .load-features li::before {
+            content: '✓ ';
+            color: var(--secondary);
+            margin-right: 0.5rem;
+        }
+
+        /* Confidence Meter */
+        .confidence-meter {
+            display: flex;
+            gap: 0.5rem;
+            align-items: center;
+            margin-top: 1rem;
+            padding: 0.75rem;
+            background: rgba(0,0,0,0.2);
+            border-radius: 0.5rem;
+        }
+
+        .confidence-dot {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+
+        .confidence-dot.high { background: #22c55e; }
+        .confidence-dot.medium { background: #f59e0b; }
+        .confidence-dot.low { background: #ef4444; }
+
+        .confidence-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+        }
     </style>
 </head>
 <body>
     <section class="hero">
         <div class="container">
-            <span class="badge">🚀 多会话智能管理</span>
+            <span class="badge">🧠 AI 时代减负方案</span>
             <h1>OpenCode Task Hub</h1>
-            <p>AI 驱动的任务管理系统，支持智能分配、风险检测、Sprint 预测和团队协作</p>
+            <p>AI 驱动的任务管理系统 + 三层负荷优化，让 AI 帮你干活，你不再更累</p>
             <div class="cta-group">
                 <a href="https://github.com/lxztry/opencode-task-hub" class="btn btn-primary">
                     📦 GitHub
@@ -306,6 +408,66 @@
                     <div class="feature-icon">⚡</div>
                     <h3>实时协作</h3>
                     <p>WebSocket 实时推送，多人同时在线，光标位置同步</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <section class="cognitive-load">
+        <div class="container">
+            <h2 class="section-title">🧠 三层负荷优化 (AI 时代减负方案)</h2>
+            <p style="text-align: center; color: var(--text-muted); max-width: 700px; margin: 0 auto 2rem;">
+                基于认知科学理论，降低 AI 协作中的切换代价、上下文压力和焦虑负荷，
+                让人类从"AI 管理者"回归"决策者和创造者"
+            </p>
+            <div class="load-cards">
+                <div class="load-card phase1">
+                    <div class="load-phase">Phase 1</div>
+                    <h3>进度连续性记忆</h3>
+                    <p>减少任务切换的认知恢复成本</p>
+                    <ul class="load-features">
+                        <li>记住上次查看位置</li>
+                        <li>Session 阅读进度追踪</li>
+                        <li>智能推荐下一个 Session</li>
+                    </ul>
+                </div>
+                <div class="load-card phase2">
+                    <div class="load-phase">Phase 2</div>
+                    <h3>AI 上下文摘要</h3>
+                    <p>突破 7±2 工作记忆上限</p>
+                    <ul class="load-features">
+                        <li>3 句话概括 Session 状态</li>
+                        <li>批量摘要用于 Dashboard</li>
+                        <li>Task 简短摘要</li>
+                    </ul>
+                </div>
+                <div class="load-card phase3">
+                    <div class="load-phase">Phase 3</div>
+                    <h3>置信度指标</h3>
+                    <p>消除 AI 焦虑负荷</p>
+                    <ul class="load-features">
+                        <li>AI 输出置信度评分</li>
+                        <li>三级动作建议</li>
+                        <li>变更历史追踪</li>
+                    </ul>
+                    <div class="confidence-meter">
+                        <span class="confidence-dot high"></span>
+                        <span style="font-size: 0.8rem;">95%+ 自动执行</span>
+                        <span class="confidence-dot medium" style="margin-left: 0.5rem;"></span>
+                        <span style="font-size: 0.8rem;">70-95% 通知</span>
+                        <span class="confidence-dot low" style="margin-left: 0.5rem;"></span>
+                        <span style="font-size: 0.8rem;">&lt;70% 确认</span>
+                    </div>
+                </div>
+                <div class="load-card phase4">
+                    <div class="load-phase">Phase 4</div>
+                    <h3>SOP + 决策边界</h3>
+                    <p>AI 定位从伙伴变工具</p>
+                    <ul class="load-features">
+                        <li>可定义标准操作流程</li>
+                        <li>人类决策边界明确化</li>
+                        <li>高风险操作强制确认</li>
+                    </ul>
                 </div>
             </div>
         </div>
