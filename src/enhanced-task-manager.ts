@@ -17,8 +17,8 @@ import { WebhookManager, webhookManager } from './webhook-manager.js';
 import { Analytics } from './analytics.js';
 
 // Cognitive Load Modules
-import { ProgressMemory, AISummarizer, ConfidenceScorer } from './cognitive-load/index.js';
-import type { SessionSummary, ConfidenceResult, UserPosition } from './cognitive-load/index.js';
+import { ProgressMemory, AISummarizer, ConfidenceScorer, SOPManager, HumanDecisionBoundary } from './cognitive-load/index.js';
+import type { SessionSummary, ConfidenceResult, UserPosition, SOP, SOPExecution, DecisionResult, DecisionRule } from './cognitive-load/index.js';
 
 export interface BoardView {
   id: string;
@@ -52,6 +52,8 @@ export class EnhancedTaskManager extends EventEmitter {
   private progressMemory: ProgressMemory;
   private aiSummarizer: AISummarizer;
   private confidenceScorer: ConfidenceScorer;
+  private sopManager: SOPManager;
+  private humanDecisionBoundary: HumanDecisionBoundary;
   private sessionSummaryCache: Map<string, SessionSummary> = new Map();
 
   constructor(db: Database) {
@@ -66,6 +68,8 @@ export class EnhancedTaskManager extends EventEmitter {
     this.progressMemory = new ProgressMemory(db);
     this.aiSummarizer = new AISummarizer();
     this.confidenceScorer = new ConfidenceScorer();
+    this.sopManager = new SOPManager(db);
+    this.humanDecisionBoundary = new HumanDecisionBoundary(db);
 
     this.initialize();
   }
@@ -698,5 +702,89 @@ export class EnhancedTaskManager extends EventEmitter {
 
   getConfidenceScorer(): ConfidenceScorer {
     return this.confidenceScorer;
+  }
+
+  // ============== Phase 4: SOP Manager ==============
+
+  getSOPManager(): SOPManager {
+    return this.sopManager;
+  }
+
+  getAllSOPs(): SOP[] {
+    return this.sopManager.getAllSOPs();
+  }
+
+  getEnabledSOPs(): SOP[] {
+    return this.sopManager.getEnabledSOPs();
+  }
+
+  matchSOP(context: { tags?: string[]; priority?: string; title?: string }): SOP | null {
+    return this.sopManager.matchSOP(context);
+  }
+
+  startSOPExecution(sopId: string, context: { taskId?: string; sessionId?: string }): SOPExecution | null {
+    return this.sopManager.startExecution(sopId, context);
+  }
+
+  getSOPExecution(id: string): SOPExecution | null {
+    return this.sopManager.getExecution(id);
+  }
+
+  getRunningSOPExecutions(): SOPExecution[] {
+    return this.sopManager.getRunningExecutions();
+  }
+
+  advanceSOPStep(executionId: string): boolean {
+    return this.sopManager.advanceStep(executionId);
+  }
+
+  createSOP(data: Parameters<SOPManager['createSOP']>[0]): SOP {
+    return this.sopManager.createSOP(data);
+  }
+
+  // ============== Phase 4: Human Decision Boundary ==============
+
+  getHumanDecisionBoundary(): HumanDecisionBoundary {
+    return this.humanDecisionBoundary;
+  }
+
+  evaluateHumanDecision(context: {
+    type: string;
+    target: string;
+    details: string;
+    sessionId?: string;
+    taskId?: string;
+  }): DecisionResult {
+    return this.humanDecisionBoundary.evaluate(context);
+  }
+
+  quickDecisionCheck(operationType: string, details: string): DecisionResult {
+    return this.humanDecisionBoundary.quickCheck(operationType, details);
+  }
+
+  getDecisionRules(): DecisionRule[] {
+    return this.humanDecisionBoundary.getAllRules();
+  }
+
+  getConfirmationRequiredRules(): DecisionRule[] {
+    return this.humanDecisionBoundary.getConfirmationRequiredRules();
+  }
+
+  confirmDecision(logId: string, confirmedBy: string, notes?: string): boolean {
+    return this.humanDecisionBoundary.confirmDecision(logId, confirmedBy, notes);
+  }
+
+  getPendingDecisions(): any[] {
+    return this.humanDecisionBoundary.getPendingDecisions();
+  }
+
+  // ============== Getters for Phase 4 ==============
+
+  getSOPManagerInstance(): SOPManager {
+    return this.sopManager;
+  }
+
+  getHumanDecisionBoundaryInstance(): HumanDecisionBoundary {
+    return this.humanDecisionBoundary;
   }
 }

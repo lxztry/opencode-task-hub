@@ -785,6 +785,136 @@ app.get('/api/cognitive/confidence/colors', (req, res) => {
   });
 });
 
+// ============== Phase 4: SOP Manager APIs ==============
+
+app.get('/api/cognitive/sops', (req, res) => {
+  const { enabled } = req.query;
+  const sops = enabled === 'true' 
+    ? taskManager.getEnabledSOPs()
+    : taskManager.getAllSOPs();
+  res.json({ sops });
+});
+
+app.post('/api/cognitive/sops', (req, res) => {
+  try {
+    const sop = taskManager.createSOP(req.body);
+    res.json(sop);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/cognitive/sops/:id', (req, res) => {
+  const sop = taskManager.getSOPManager().getSOP(req.params.id);
+  if (!sop) return res.status(404).json({ error: 'SOP not found' });
+  res.json(sop);
+});
+
+app.put('/api/cognitive/sops/:id', (req, res) => {
+  const sop = taskManager.getSOPManager().updateSOP(req.params.id, req.body);
+  if (!sop) return res.status(404).json({ error: 'SOP not found' });
+  res.json(sop);
+});
+
+app.delete('/api/cognitive/sops/:id', (req, res) => {
+  taskManager.getSOPManager().deleteSOP(req.params.id);
+  res.json({ success: true });
+});
+
+app.get('/api/cognitive/sops/match/:taskId', (req, res) => {
+  // 根据 taskId 匹配 SOP
+  const task = taskManager.getTask(req.params.taskId);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+
+  const sop = taskManager.matchSOP({
+    tags: task.tags,
+    priority: task.priority,
+    title: task.title
+  });
+  res.json({ matchedSOP: sop });
+});
+
+app.post('/api/cognitive/sops/:id/execute', (req, res) => {
+  const { taskId, sessionId } = req.body;
+  const execution = taskManager.startSOPExecution(req.params.id, { taskId, sessionId });
+  if (!execution) return res.status(404).json({ error: 'SOP not found' });
+  res.json(execution);
+});
+
+app.get('/api/cognitive/executions/:id', (req, res) => {
+  const execution = taskManager.getSOPExecution(req.params.id);
+  if (!execution) return res.status(404).json({ error: 'Execution not found' });
+  res.json(execution);
+});
+
+app.get('/api/cognitive/executions/running', (req, res) => {
+  const executions = taskManager.getRunningSOPExecutions();
+  res.json({ executions });
+});
+
+app.post('/api/cognitive/executions/:id/advance', (req, res) => {
+  const success = taskManager.advanceSOPStep(req.params.id);
+  res.json({ success });
+});
+
+// ============== Phase 4: Human Decision Boundary APIs ==============
+
+app.get('/api/cognitive/decisions/rules', (req, res) => {
+  const { confirmationRequired } = req.query;
+  const rules = confirmationRequired === 'true'
+    ? taskManager.getConfirmationRequiredRules()
+    : taskManager.getDecisionRules();
+  res.json({ rules });
+});
+
+app.post('/api/cognitive/decisions/rules', (req, res) => {
+  try {
+    const rule = taskManager.getHumanDecisionBoundaryInstance().createRule(req.body);
+    res.json(rule);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/cognitive/decisions/rules/:id', (req, res) => {
+  const rule = taskManager.getHumanDecisionBoundaryInstance().getRule(req.params.id);
+  if (!rule) return res.status(404).json({ error: 'Rule not found' });
+  res.json(rule);
+});
+
+app.put('/api/cognitive/decisions/rules/:id', (req, res) => {
+  const rule = taskManager.getHumanDecisionBoundaryInstance().updateRule(req.params.id, req.body);
+  if (!rule) return res.status(404).json({ error: 'Rule not found' });
+  res.json(rule);
+});
+
+app.delete('/api/cognitive/decisions/rules/:id', (req, res) => {
+  taskManager.getHumanDecisionBoundaryInstance().deleteRule(req.params.id);
+  res.json({ success: true });
+});
+
+app.post('/api/cognitive/decisions/evaluate', (req, res) => {
+  const result = taskManager.evaluateHumanDecision(req.body);
+  res.json(result);
+});
+
+app.post('/api/cognitive/decisions/quick-check', (req, res) => {
+  const { operationType, details } = req.body;
+  const result = taskManager.quickDecisionCheck(operationType, details);
+  res.json(result);
+});
+
+app.post('/api/cognitive/decisions/confirm/:logId', (req, res) => {
+  const { confirmedBy, notes } = req.body;
+  const success = taskManager.confirmDecision(req.params.logId, confirmedBy, notes);
+  res.json({ success });
+});
+
+app.get('/api/cognitive/decisions/pending', (req, res) => {
+  const pending = taskManager.getPendingDecisions();
+  res.json({ pending });
+});
+
 // ============== Original Task APIs (Legacy) ==============
 
 app.get('/api/tasks', (req, res) => {
