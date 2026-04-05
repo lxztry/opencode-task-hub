@@ -18,7 +18,6 @@ import { Analytics } from './analytics.js';
 
 // Cognitive Load Modules
 import { ProgressMemory, AISummarizer, ConfidenceScorer, SOPManager, HumanDecisionBoundary } from './cognitive-load/index.js';
-import type { SessionSummary, ConfidenceResult, UserPosition, SOP, SOPExecution, DecisionResult, DecisionRule } from './cognitive-load/index.js';
 
 export interface BoardView {
   id: string;

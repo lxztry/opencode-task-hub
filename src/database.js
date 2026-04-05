@@ -3,34 +3,29 @@
  * SQLite persistence with migrations
  */
 
-import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
+const SQLite = require('better-sqlite3');
 
-export class Database {
-  private db: any;
-  private dbPath: string;
-
-  constructor(dbPath?: string) {
+class Database {
+  constructor(dbPath) {
     this.dbPath = dbPath || path.join(process.cwd(), 'data', 'taskhub.db');
     
-    // 确保目录存在
     const dir = path.dirname(this.dbPath);
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
 
-    this.db = new Database(this.dbPath);
+    this.db = new SQLite(this.dbPath);
     this.db.pragma('journal_mode = WAL');
     this.initialize();
   }
 
-  private initialize(): void {
+  initialize() {
     this.createTables();
   }
 
-  private createTables(): void {
-    // Sessions 表
+  createTables() {
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS sessions (
         id TEXT PRIMARY KEY,
@@ -59,7 +54,6 @@ export class Database {
       )
     `);
 
-    // Tasks 表
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS tasks (
         id TEXT PRIMARY KEY,
@@ -83,7 +77,6 @@ export class Database {
       )
     `);
 
-    // Team Members 表
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS team_members (
         id TEXT PRIMARY KEY,
@@ -100,7 +93,6 @@ export class Database {
       )
     `);
 
-    // Time Entries 表
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS time_entries (
         id TEXT PRIMARY KEY,
@@ -115,7 +107,6 @@ export class Database {
       )
     `);
 
-    // Artifacts 表
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS artifacts (
         id TEXT PRIMARY KEY,
@@ -133,7 +124,6 @@ export class Database {
       )
     `);
 
-    // Webhooks 表
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS webhooks (
         id TEXT PRIMARY KEY,
@@ -146,7 +136,6 @@ export class Database {
       )
     `);
 
-    // Notifications 表
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS notifications (
         id TEXT PRIMARY KEY,
@@ -161,7 +150,6 @@ export class Database {
       )
     `);
 
-    // Analytics 表
     this.db.exec(`
       CREATE TABLE IF NOT EXISTS analytics (
         id TEXT PRIMARY KEY,
@@ -171,7 +159,6 @@ export class Database {
       )
     `);
 
-    // 创建索引
     this.db.exec(`
       CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
       CREATE INDEX IF NOT EXISTS idx_tasks_assignee ON tasks(assignee);
@@ -184,9 +171,7 @@ export class Database {
     `);
   }
 
-  // ============== Generic Operations ==============
-
-  run(sql: string, params: any[] = []): any {
+  run(sql, params = []) {
     try {
       const stmt = this.db.prepare(sql);
       return stmt.run(...params);
@@ -196,7 +181,7 @@ export class Database {
     }
   }
 
-  get(sql: string, params: any[] = []): any {
+  get(sql, params = []) {
     try {
       const stmt = this.db.prepare(sql);
       return stmt.get(...params);
@@ -206,7 +191,7 @@ export class Database {
     }
   }
 
-  all(sql: string, params: any[] = []): any[] {
+  all(sql, params = []) {
     try {
       const stmt = this.db.prepare(sql);
       return stmt.all(...params);
@@ -216,17 +201,15 @@ export class Database {
     }
   }
 
-  // ============== Task Operations ==============
-
-  getTasks(): any[] {
+  getTasks() {
     return this.all('SELECT * FROM tasks ORDER BY created_at DESC');
   }
 
-  getTaskById(id: string): any {
+  getTaskById(id) {
     return this.get('SELECT * FROM tasks WHERE id = ?', [id]);
   }
 
-  createTask(task: any): void {
+  createTask(task) {
     this.run(`
       INSERT INTO tasks (
         id, title, description, status, priority, assignee, tags,
@@ -254,9 +237,9 @@ export class Database {
     ]);
   }
 
-  updateTask(id: string, updates: any): void {
-    const fields: string[] = [];
-    const values: any[] = [];
+  updateTask(id, updates) {
+    const fields = [];
+    const values = [];
 
     Object.entries(updates).forEach(([key, value]) => {
       const dbKey = key.replace(/([A-Z])/g, '_$1').toLowerCase();
@@ -275,27 +258,23 @@ export class Database {
     this.run(`UPDATE tasks SET ${fields.join(', ')} WHERE id = ?`, values);
   }
 
-  deleteTask(id: string): void {
+  deleteTask(id) {
     this.run('DELETE FROM tasks WHERE id = ?', [id]);
   }
 
-  // ============== Session Operations ==============
-
-  getSessions(): any[] {
+  getSessions() {
     return this.all('SELECT * FROM sessions ORDER BY created_at DESC');
   }
 
-  getSessionById(id: string): any {
+  getSessionById(id) {
     return this.get('SELECT * FROM sessions WHERE id = ?', [id]);
   }
 
-  // ============== Team Operations ==============
-
-  getTeamMembers(): any[] {
+  getTeamMembers() {
     return this.all('SELECT * FROM team_members ORDER BY name');
   }
 
-  createTeamMember(member: any): void {
+  createTeamMember(member) {
     this.run(`
       INSERT INTO team_members (
         id, name, email, avatar, skills, availability,
@@ -316,16 +295,14 @@ export class Database {
     ]);
   }
 
-  // ============== Time Entry Operations ==============
-
-  getTimeEntries(taskId?: string): any[] {
+  getTimeEntries(taskId) {
     if (taskId) {
       return this.all('SELECT * FROM time_entries WHERE task_id = ? ORDER BY date DESC', [taskId]);
     }
     return this.all('SELECT * FROM time_entries ORDER BY date DESC');
   }
 
-  createTimeEntry(entry: any): void {
+  createTimeEntry(entry) {
     this.run(`
       INSERT INTO time_entries (id, task_id, user_id, hours, date, description, created_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -340,13 +317,11 @@ export class Database {
     ]);
   }
 
-  // ============== Webhook Operations ==============
-
-  getWebhooks(): any[] {
+  getWebhooks() {
     return this.all('SELECT * FROM webhooks WHERE active = 1');
   }
 
-  createWebhook(webhook: any): void {
+  createWebhook(webhook) {
     this.run(`
       INSERT INTO webhooks (id, url, events, secret, active, created_at, updated_at)
       VALUES (?, ?, ?, ?, ?, ?, ?)
@@ -361,16 +336,14 @@ export class Database {
     ]);
   }
 
-  // ============== Notification Operations ==============
-
-  getNotifications(userId: string, unreadOnly = false): any[] {
+  getNotifications(userId, unreadOnly = false) {
     const sql = unreadOnly 
       ? 'SELECT * FROM notifications WHERE user_id = ? AND read = 0 ORDER BY created_at DESC'
       : 'SELECT * FROM notifications WHERE user_id = ? ORDER BY created_at DESC';
     return this.all(sql, [userId]);
   }
 
-  createNotification(notification: any): void {
+  createNotification(notification) {
     this.run(`
       INSERT INTO notifications (id, type, title, message, user_id, read, created_at, action_url, metadata)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
@@ -387,13 +360,11 @@ export class Database {
     ]);
   }
 
-  markNotificationRead(id: string): void {
+  markNotificationRead(id) {
     this.run('UPDATE notifications SET read = 1 WHERE id = ?', [id]);
   }
 
-  // ============== Analytics Operations ==============
-
-  saveAnalytics(type: string, data: any): void {
+  saveAnalytics(type, data) {
     this.run(`
       INSERT INTO analytics (id, type, data, created_at)
       VALUES (?, ?, ?, ?)
@@ -405,22 +376,21 @@ export class Database {
     ]);
   }
 
-  getAnalytics(type: string, limit = 30): any[] {
+  getAnalytics(type, limit = 30) {
     return this.all(
       'SELECT * FROM analytics WHERE type = ? ORDER BY created_at DESC LIMIT ?',
       [type, limit]
     );
   }
 
-  // ============== Utility ==============
-
-  close(): void {
+  close() {
     this.db.close();
   }
 
-  backup(backupPath: string): void {
+  backup(backupPath) {
     this.db.backup(backupPath);
   }
 }
 
+export { Database };
 export default Database;
