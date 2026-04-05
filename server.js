@@ -683,6 +683,108 @@ app.post('/api/enhanced/sprints', async (req, res) => {
   }
 });
 
+// ============== Cognitive Load APIs (Phase 1-3) ==============
+
+// Phase 1: Progress Memory APIs
+app.get('/api/cognitive/progress/:userId', (req, res) => {
+  const position = taskManager.getUserPosition(req.params.userId);
+  res.json(position || { userId: req.params.userId });
+});
+
+app.post('/api/cognitive/progress/:userId', (req, res) => {
+  taskManager.saveUserPosition(req.params.userId, req.body);
+  res.json({ success: true });
+});
+
+app.post('/api/cognitive/progress/:userId/mark-session/:sessionId', (req, res) => {
+  taskManager.markSessionAccessed(req.params.userId, req.params.sessionId);
+  res.json({ success: true });
+});
+
+app.get('/api/cognitive/progress/:userId/suggest-next', (req, res) => {
+  const nextSession = taskManager.suggestNextSession(req.params.userId);
+  res.json({ suggestedSessionId: nextSession });
+});
+
+// Phase 2: AI Summarizer APIs
+app.get('/api/cognitive/summaries/sessions', async (req, res) => {
+  try {
+    const { sessionIds } = req.query;
+    const ids = sessionIds ? sessionIds.split(',') : undefined;
+    const summaries = await taskManager.getSessionSummaries(ids);
+    res.json({ summaries });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/cognitive/summaries/sessions/:sessionId', async (req, res) => {
+  try {
+    const summary = await taskManager.getSessionSummary(req.params.sessionId);
+    if (!summary) return res.status(404).json({ error: 'Session not found' });
+    res.json(summary);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.get('/api/cognitive/summaries/tasks/:taskId', (req, res) => {
+  const summary = taskManager.getTaskSummary(req.params.taskId);
+  if (!summary) return res.status(404).json({ error: 'Task not found' });
+  res.json(summary);
+});
+
+app.post('/api/cognitive/summaries/invalidate', (req, res) => {
+  const { sessionId } = req.body;
+  taskManager.invalidateSummaryCache(sessionId);
+  res.json({ success: true });
+});
+
+// Phase 3: Confidence Scorer APIs
+app.post('/api/cognitive/confidence/evaluate', (req, res) => {
+  try {
+    const result = taskManager.evaluateConfidence(req.body);
+    res.json(result);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+app.post('/api/cognitive/confidence/check', (req, res) => {
+  const needsConfirm = taskManager.needsConfirmation(req.body);
+  res.json({ needsConfirmation: needsConfirm });
+});
+
+app.get('/api/cognitive/confidence/history', (req, res) => {
+  const limit = parseInt(req.query.limit) || 20;
+  const history = taskManager.getChangeHistory(limit);
+  res.json({ history });
+});
+
+app.get('/api/cognitive/confidence/pending', (req, res) => {
+  const pending = taskManager.getPendingChanges();
+  res.json({ pending });
+});
+
+app.post('/api/cognitive/confidence/confirm/:changeId', (req, res) => {
+  const { confirmed, notes } = req.body;
+  const success = taskManager.confirmChange(req.params.changeId, confirmed, notes);
+  res.json({ success });
+});
+
+app.post('/api/cognitive/confidence/record', (req, res) => {
+  const record = taskManager.recordChange(req.body);
+  res.json(record);
+});
+
+app.get('/api/cognitive/confidence/colors', (req, res) => {
+  const score = parseFloat(req.query.score) || 0.5;
+  res.json({
+    color: taskManager.getConfidenceColor(score),
+    label: taskManager.getConfidenceLabel(score)
+  });
+});
+
 // ============== Original Task APIs (Legacy) ==============
 
 app.get('/api/tasks', (req, res) => {
@@ -802,5 +904,6 @@ server.listen(PORT, () => {
   console.log(`   /api/ai/*              - AI分析`);
   console.log(`   /api/webhooks/*        - Webhooks`);
   console.log(`   /api/analytics/*       - 数据分析`);
+  console.log(`   /api/cognitive/*       - 三层负荷优化 (Phase 1-3)`);
   console.log();
 });

@@ -1,6 +1,11 @@
 /**
  * OpenCode Task Hub - Enhanced Task Manager
  * Integrates: Sessions, AI Analysis, Webhooks, Analytics
+ * 
+ * Cognitive Load Optimization (Phase 1-3):
+ * - Progress Memory: 进度连续性记忆
+ * - AI Summarizer: AI上下文摘要
+ * - Confidence Scorer: 置信度指标
  */
 
 import { EventEmitter } from 'events';
@@ -10,6 +15,10 @@ import { SessionManager } from './session-manager.js';
 import { AIEnhancer } from './ai-enhancer.js';
 import { WebhookManager, webhookManager } from './webhook-manager.js';
 import { Analytics } from './analytics.js';
+
+// Cognitive Load Modules
+import { ProgressMemory, AISummarizer, ConfidenceScorer } from './cognitive-load/index.js';
+import type { SessionSummary, ConfidenceResult, UserPosition } from './cognitive-load/index.js';
 
 export interface BoardView {
   id: string;
@@ -39,6 +48,12 @@ export class EnhancedTaskManager extends EventEmitter {
   private webhookManager: WebhookManager;
   private analytics: Analytics;
 
+  // Cognitive Load Modules
+  private progressMemory: ProgressMemory;
+  private aiSummarizer: AISummarizer;
+  private confidenceScorer: ConfidenceScorer;
+  private sessionSummaryCache: Map<string, SessionSummary> = new Map();
+
   constructor(db: Database) {
     super();
     this.db = db;
@@ -46,6 +61,11 @@ export class EnhancedTaskManager extends EventEmitter {
     this.aiEnhancer = new AIEnhancer();
     this.webhookManager = webhookManager;
     this.analytics = new Analytics();
+
+    // Initialize Cognitive Load Modules
+    this.progressMemory = new ProgressMemory(db);
+    this.aiSummarizer = new AISummarizer();
+    this.confidenceScorer = new ConfidenceScorer();
 
     this.initialize();
   }
@@ -490,5 +510,193 @@ export class EnhancedTaskManager extends EventEmitter {
       tags: parsed.tags || [],
       dueDate: parsed.dueDate
     });
+  }
+
+  // ============== Cognitive Load: Progress Memory (Phase 1) ==============
+
+  /**
+   * 保存用户当前位置（用于进度连续性）
+   */
+  saveUserPosition(userId: string, position: Partial<UserPosition>): void {
+    const current = this.progressMemory.getUserPosition(userId) || { userId, updatedAt: Date.now() };
+    this.progressMemory.saveUserPosition({
+      ...current,
+      ...position,
+      updatedAt: Date.now()
+    });
+  }
+
+  /**
+   * 获取用户上次位置
+   */
+  getUserPosition(userId: string): UserPosition | null {
+    return this.progressMemory.getUserPosition(userId);
+  }
+
+  /**
+   * 标记Session被访问（快速方法）
+   */
+  markSessionAccessed(userId: string, sessionId: string): void {
+    this.progressMemory.markSessionAccessed(userId, sessionId);
+  }
+
+  /**
+   * 推荐下一个应该看的Session
+   */
+  suggestNextSession(userId: string): string | null {
+    const sessions = this.sessionManager.getAllSessions().map(s => ({
+      id: s.id,
+      status: s.status,
+      createdAt: s.createdAt
+    }));
+    return this.progressMemory.suggestNextSession(userId, sessions);
+  }
+
+  // ============== Cognitive Load: AI Context Summary (Phase 2) ==============
+
+  /**
+   * 获取Session的3句话摘要
+   */
+  async getSessionSummary(sessionId: string): Promise<SessionSummary | null> {
+    // 检查缓存（5分钟内有效）
+    const cached = this.sessionSummaryCache.get(sessionId);
+    if (cached && Date.now() - cached.generatedAt < 5 * 60 * 1000) {
+      return cached;
+    }
+
+    const session = this.sessionManager.getSession(sessionId);
+    if (!session) return null;
+
+    const summary = await this.aiSummarizer.summarizeSession(session);
+    this.sessionSummaryCache.set(sessionId, summary);
+    return summary;
+  }
+
+  /**
+   * 批量获取Session摘要（用于Dashboard展示）
+   */
+  async getSessionSummaries(sessionIds?: string[]): Promise<SessionSummary[]> {
+    const sessions = sessionIds
+      ? sessionIds.map(id => this.sessionManager.getSession(id)).filter(Boolean) as Session[]
+      : this.sessionManager.getAllSessions();
+
+    return this.aiSummarizer.summarizeSessions(sessions, this.sessionSummaryCache);
+  }
+
+  /**
+   * 获取Task的简短摘要
+   */
+  getTaskSummary(taskId: string): import('./cognitive-load/index.js').TaskSummary | null {
+    const task = this.tasks.get(taskId);
+    if (!task) return null;
+
+    return this.aiSummarizer.summarizeTask(task);
+  }
+
+  /**
+   * 刷新摘要缓存（当Session内容变化时调用）
+   */
+  invalidateSummaryCache(sessionId?: string): void {
+    if (sessionId) {
+      this.sessionSummaryCache.delete(sessionId);
+    } else {
+      this.sessionSummaryCache.clear();
+    }
+  }
+
+  // ============== Cognitive Load: Confidence Scorer (Phase 3) ==============
+
+  /**
+   * 评估AI输出的置信度
+   */
+  evaluateConfidence(context: {
+    sessionId?: string;
+    taskId?: string;
+    outputType: 'summary' | 'suggestion' | 'code' | 'decision' | 'task-creation' | 'delete' | 'execute';
+    outputContent?: string;
+  }): ConfidenceResult {
+    const session = context.sessionId ? this.sessionManager.getSession(context.sessionId) : undefined;
+    const task = context.taskId ? this.tasks.get(context.taskId) : undefined;
+
+    return this.confidenceScorer.evaluateConfidence({
+      session,
+      task,
+      outputType: context.outputType,
+      outputContent: context.outputContent
+    });
+  }
+
+  /**
+   * 检查是否需要人工确认
+   */
+  needsConfirmation(context: {
+    outputType: string;
+    outputContent?: string;
+  }): boolean {
+    return this.confidenceScorer.needsConfirmation(context);
+  }
+
+  /**
+   * 记录一次变更（用于追踪历史）
+   */
+  recordChange(change: {
+    actionType: 'create' | 'update' | 'delete' | 'execute';
+    targetType: 'task' | 'session' | 'file' | 'code' | 'artifact';
+    targetId: string;
+    targetName: string;
+    beforeState?: any;
+    afterState?: any;
+    confidence: number;
+  }): import('./cognitive-load/index.js').ChangeRecord {
+    return this.confidenceScorer.recordChange(change);
+  }
+
+  /**
+   * 确认或拒绝变更
+   */
+  confirmChange(changeId: string, confirmed: boolean, notes?: string): boolean {
+    return this.confidenceScorer.confirmChange(changeId, confirmed, notes);
+  }
+
+  /**
+   * 获取变更历史
+   */
+  getChangeHistory(limit = 20): import('./cognitive-load/index.js').ChangeRecord[] {
+    return this.confidenceScorer.getChangeHistory(limit);
+  }
+
+  /**
+   * 获取待确认的变更
+   */
+  getPendingChanges(): import('./cognitive-load/index.js').ChangeRecord[] {
+    return this.confidenceScorer.getPendingChanges();
+  }
+
+  /**
+   * 获取置信度颜色（用于UI显示）
+   */
+  getConfidenceColor(score: number): string {
+    return this.confidenceScorer.getConfidenceColor(score);
+  }
+
+  /**
+   * 获取置信度标签
+   */
+  getConfidenceLabel(score: number): string {
+    return this.confidenceScorer.getConfidenceLabel(score);
+  }
+
+  // ============== Getters for Cognitive Load Modules ==============
+
+  getProgressMemory(): ProgressMemory {
+    return this.progressMemory;
+  }
+
+  getAISummarizer(): AISummarizer {
+    return this.aiSummarizer;
+  }
+
+  getConfidenceScorer(): ConfidenceScorer {
+    return this.confidenceScorer;
   }
 }
