@@ -67,7 +67,7 @@ export class EnhancedTaskManager extends EventEmitter {
     // Initialize Cognitive Load Modules
     this.progressMemory = new ProgressMemory(db);
     this.aiSummarizer = new AISummarizer();
-    this.confidenceScorer = new ConfidenceScorer();
+    this.confidenceScorer = new ConfidenceScorer(db);
     this.sopManager = new SOPManager(db);
     this.humanDecisionBoundary = new HumanDecisionBoundary(db);
 

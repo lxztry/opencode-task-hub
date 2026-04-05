@@ -54,9 +54,23 @@ export interface ChangeRecord {
 export class ConfidenceScorer {
   private changeHistory: ChangeRecord[] = [];
   private historicalAccuracy: number = 0.85; // 初始值，可根据实际数据调整
+  private db: Database;
 
-  constructor() {
+  constructor(db: Database) {
+    this.db = db;
+    this.ensureTable();
     this.loadHistoricalData();
+  }
+
+  private ensureTable(): void {
+    this.db.run(`
+      CREATE TABLE IF NOT EXISTS confidence_history (
+        id TEXT PRIMARY KEY,
+        change_data TEXT NOT NULL,
+        historical_accuracy REAL NOT NULL,
+        updated_at INTEGER NOT NULL
+      )
+    `);
   }
 
   // ============== 核心评分方法 ==============
@@ -398,11 +412,10 @@ export class ConfidenceScorer {
 
   private loadHistoricalData(): void {
     try {
-      const saved = localStorage.getItem('confidence_scorer_history');
-      if (saved) {
-        const data = JSON.parse(saved);
-        this.changeHistory = data.changeHistory || [];
-        this.historicalAccuracy = data.historicalAccuracy || 0.85;
+      const row = this.db.get('SELECT * FROM confidence_history ORDER BY updated_at DESC LIMIT 1');
+      if (row) {
+        this.changeHistory = JSON.parse(row.change_data || '[]');
+        this.historicalAccuracy = row.historical_accuracy || 0.85;
       }
     } catch (e) {
       // 忽略错误，使用默认值
@@ -411,10 +424,10 @@ export class ConfidenceScorer {
 
   private saveHistoricalData(): void {
     try {
-      localStorage.setItem('confidence_scorer_history', JSON.stringify({
-        changeHistory: this.changeHistory,
-        historicalAccuracy: this.historicalAccuracy
-      }));
+      this.db.run(`
+        INSERT OR REPLACE INTO confidence_history (id, change_data, historical_accuracy, updated_at)
+        VALUES ('main', ?, ?, ?)
+      `, [JSON.stringify(this.changeHistory), this.historicalAccuracy, Date.now()]);
     } catch (e) {
       // 忽略错误
     }
