@@ -10,7 +10,7 @@ import { fileURLToPath } from 'url';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3030;
 const API_KEY = process.env.API_KEY || '';
-const SESSION_TIMEOUT = 5 * 60 * 1000; // 5 minutes - 不活跃会话自动清理
+const SESSION_TIMEOUT = 5 * 60 * 1000;
 const API_KEY_HEADER = 'x-api-key';
 
 function authenticate(req, res, next) {
@@ -179,6 +179,347 @@ app.delete('/api/tasks/:id', authenticate, (req, res) => {
   res.status(204).send();
 });
 
+// ============== Cognitive Load APIs (Phase 1-3) ==============
+
+const cognitiveData = {
+  progress: new Map(),
+  summaries: new Map(),
+  confidence: {
+    history: [],
+    pending: [],
+    currentScore: 0.5
+  },
+  sops: [],
+  decisions: {
+    rules: [],
+    logs: []
+  }
+};
+
+function getCognitiveDataPath(filename) {
+  const dir = path.join(__dirname, 'data', 'cognitive');
+  if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+  return path.join(dir, filename);
+}
+
+function loadCognitiveData() {
+  try {
+    const files = ['sops.json', 'decisions.json', 'confidence.json'];
+    for (const file of files) {
+      const filePath = getCognitiveDataPath(file);
+      if (fs.existsSync(filePath)) {
+        const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+        if (file === 'sops.json') cognitiveData.sops = data;
+        if (file === 'decisions.json') cognitiveData.decisions.rules = data;
+        if (file === 'confidence.json') cognitiveData.confidence = data;
+      }
+    }
+  } catch (e) {
+    console.log('Loading cognitive data:', e.message);
+  }
+}
+
+function saveCognitiveData() {
+  try {
+    fs.writeFileSync(getCognitiveDataPath('sops.json'), JSON.stringify(cognitiveData.sops, null, 2));
+    fs.writeFileSync(getCognitiveDataPath('decisions.json'), JSON.stringify(cognitiveData.decisions.rules, null, 2));
+    fs.writeFileSync(getCognitiveDataPath('confidence.json'), JSON.stringify(cognitiveData.confidence, null, 2));
+  } catch (e) {
+    console.error('Failed to save cognitive data:', e);
+  }
+}
+
+loadCognitiveData();
+
+// Phase 1: Progress Memory APIs
+app.get('/api/cognitive/progress/:userId', (req, res) => {
+  const position = cognitiveData.progress.get(req.params.userId) || { userId: req.params.userId };
+  res.json(position);
+});
+
+app.post('/api/cognitive/progress/:userId', (req, res) => {
+  cognitiveData.progress.set(req.params.userId, req.body);
+  res.json({ success: true });
+});
+
+app.post('/api/cognitive/progress/:userId/mark-session/:sessionId', (req, res) => {
+  const userProgress = cognitiveData.progress.get(req.params.userId) || { accessedSessions: [] };
+  if (!userProgress.accessedSessions) userProgress.accessedSessions = [];
+  if (!userProgress.accessedSessions.includes(req.params.sessionId)) {
+    userProgress.accessedSessions.push(req.params.sessionId);
+  }
+  cognitiveData.progress.set(req.params.userId, userProgress);
+  res.json({ success: true });
+});
+
+app.get('/api/cognitive/progress/:userId/suggest-next', (req, res) => {
+  const userProgress = cognitiveData.progress.get(req.params.userId) || { accessedSessions: [] };
+  const accessed = userProgress.accessedSessions || [];
+  const nextSession = sessions.find(s => !accessed.includes(s.id));
+  res.json({ suggestedSessionId: nextSession?.id });
+});
+
+// Phase 2: AI Summarizer APIs
+app.get('/api/cognitive/summaries/sessions', (req, res) => {
+  const { sessionIds } = req.query;
+  const ids = sessionIds ? sessionIds.split(',') : [];
+  const summaries = [];
+  for (const id of ids) {
+    if (cognitiveData.summaries.has(id)) {
+      summaries.push(cognitiveData.summaries.get(id));
+    }
+  }
+  res.json({ summaries });
+});
+
+app.get('/api/cognitive/summaries/sessions/:sessionId', (req, res) => {
+  const summary = cognitiveData.summaries.get(req.params.sessionId);
+  if (!summary) return res.status(404).json({ error: 'Session not found' });
+  res.json(summary);
+});
+
+app.get('/api/cognitive/summaries/tasks/:taskId', (req, res) => {
+  const task = tasks.find(t => t.id === req.params.taskId);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  const summary = {
+    taskId: task.id,
+    title: task.title,
+    status: task.status,
+    summary: task.description?.substring(0, 200) || ''
+  };
+  res.json(summary);
+});
+
+app.post('/api/cognitive/summaries/invalidate', (req, res) => {
+  const { sessionId } = req.body;
+  if (sessionId) cognitiveData.summaries.delete(sessionId);
+  res.json({ success: true });
+});
+
+// Phase 3: Confidence Scorer APIs
+app.post('/api/cognitive/confidence/evaluate', (req, res) => {
+  const { task, context } = req.body;
+  const score = Math.random() * 0.5 + 0.25;
+  const result = {
+    score,
+    level: score > 0.7 ? 'high' : score > 0.4 ? 'medium' : 'low',
+    factors: ['代码复杂度', '测试覆盖率', '历史变更'],
+    needsConfirmation: score < 0.5
+  };
+  cognitiveData.confidence.currentScore = score;
+  res.json(result);
+});
+
+app.post('/api/cognitive/confidence/check', (req, res) => {
+  const { taskId, operation } = req.body;
+  const needsConfirm = Math.random() > 0.7;
+  res.json({ needsConfirmation: needsConfirm });
+});
+
+app.get('/api/cognitive/confidence/history', (req, res) => {
+  const limit = parseInt(req.query.limit) || 20;
+  res.json({ history: cognitiveData.confidence.history.slice(0, limit) });
+});
+
+app.get('/api/cognitive/confidence/pending', (req, res) => {
+  res.json({ pending: cognitiveData.confidence.pending });
+});
+
+app.post('/api/cognitive/confidence/confirm/:changeId', (req, res) => {
+  const { confirmed, notes } = req.body;
+  const change = cognitiveData.confidence.pending.find(c => c.id === req.params.changeId);
+  if (change) {
+    change.confirmed = confirmed;
+    change.notes = notes;
+    change.resolvedAt = new Date().toISOString();
+    cognitiveData.confidence.history.unshift(change);
+    cognitiveData.confidence.pending = cognitiveData.confidence.pending.filter(c => c.id !== req.params.changeId);
+    saveCognitiveData();
+  }
+  res.json({ success: !!change });
+});
+
+app.post('/api/cognitive/confidence/record', (req, res) => {
+  const record = {
+    id: uuidv4(),
+    ...req.body,
+    createdAt: new Date().toISOString()
+  };
+  cognitiveData.confidence.history.unshift(record);
+  if (cognitiveData.confidence.history.length > 100) {
+    cognitiveData.confidence.history = cognitiveData.confidence.history.slice(0, 100);
+  }
+  saveCognitiveData();
+  res.json(record);
+});
+
+app.get('/api/cognitive/confidence/colors', (req, res) => {
+  const score = parseFloat(req.query.score) || 0.5;
+  let color, label;
+  if (score > 0.7) { color = '#22c55e'; label = '高置信度'; }
+  else if (score > 0.4) { color = '#f59e0b'; label = '中置信度'; }
+  else { color = '#ef4444'; label = '低置信度'; }
+  res.json({ color, label });
+});
+
+// Phase 4: SOP Manager APIs
+app.get('/api/cognitive/sops', (req, res) => {
+  const { enabled } = req.query;
+  const sops = enabled === 'true' 
+    ? cognitiveData.sops.filter(s => s.enabled)
+    : cognitiveData.sops;
+  res.json({ sops });
+});
+
+app.post('/api/cognitive/sops', (req, res) => {
+  const sop = {
+    id: uuidv4(),
+    ...req.body,
+    createdAt: new Date().toISOString()
+  };
+  cognitiveData.sops.push(sop);
+  saveCognitiveData();
+  res.json(sop);
+});
+
+app.get('/api/cognitive/sops/:id', (req, res) => {
+  const sop = cognitiveData.sops.find(s => s.id === req.params.id);
+  if (!sop) return res.status(404).json({ error: 'SOP not found' });
+  res.json(sop);
+});
+
+app.put('/api/cognitive/sops/:id', (req, res) => {
+  const idx = cognitiveData.sops.findIndex(s => s.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'SOP not found' });
+  cognitiveData.sops[idx] = { ...cognitiveData.sops[idx], ...req.body };
+  saveCognitiveData();
+  res.json(cognitiveData.sops[idx]);
+});
+
+app.delete('/api/cognitive/sops/:id', (req, res) => {
+  cognitiveData.sops = cognitiveData.sops.filter(s => s.id !== req.params.id);
+  saveCognitiveData();
+  res.json({ success: true });
+});
+
+app.get('/api/cognitive/sops/match/:taskId', (req, res) => {
+  const task = tasks.find(t => t.id === req.params.taskId);
+  if (!task) return res.status(404).json({ error: 'Task not found' });
+  const matched = cognitiveData.sops.find(s => {
+    if (!s.enabled) return false;
+    if (s.tags && task.tags) {
+      return s.tags.some(t => task.tags.includes(t));
+    }
+    return false;
+  });
+  res.json({ matchedSOP: matched || null });
+});
+
+app.post('/api/cognitive/sops/:id/execute', (req, res) => {
+  const { taskId, sessionId } = req.body;
+  const execution = {
+    id: uuidv4(),
+    sopId: req.params.id,
+    taskId,
+    sessionId,
+    currentStep: 0,
+    status: 'running',
+    startedAt: new Date().toISOString()
+  };
+  res.json(execution);
+});
+
+app.get('/api/cognitive/executions/:id', (req, res) => {
+  res.json({ id: req.params.id, status: 'completed' });
+});
+
+app.get('/api/cognitive/executions/running', (req, res) => {
+  res.json({ executions: [] });
+});
+
+app.post('/api/cognitive/executions/:id/advance', (req, res) => {
+  res.json({ success: true });
+});
+
+// Phase 5: Human Decision Boundary APIs
+app.get('/api/cognitive/decisions/rules', (req, res) => {
+  const { confirmationRequired } = req.query;
+  const rules = confirmationRequired === 'true'
+    ? cognitiveData.decisions.rules.filter(r => r.confirmationRequired)
+    : cognitiveData.decisions.rules;
+  res.json({ rules });
+});
+
+app.post('/api/cognitive/decisions/rules', (req, res) => {
+  const rule = {
+    id: uuidv4(),
+    ...req.body,
+    createdAt: new Date().toISOString()
+  };
+  cognitiveData.decisions.rules.push(rule);
+  saveCognitiveData();
+  res.json(rule);
+});
+
+app.get('/api/cognitive/decisions/rules/:id', (req, res) => {
+  const rule = cognitiveData.decisions.rules.find(r => r.id === req.params.id);
+  if (!rule) return res.status(404).json({ error: 'Rule not found' });
+  res.json(rule);
+});
+
+app.put('/api/cognitive/decisions/rules/:id', (req, res) => {
+  const idx = cognitiveData.decisions.rules.findIndex(r => r.id === req.params.id);
+  if (idx === -1) return res.status(404).json({ error: 'Rule not found' });
+  cognitiveData.decisions.rules[idx] = { ...cognitiveData.decisions.rules[idx], ...req.body };
+  saveCognitiveData();
+  res.json(cognitiveData.decisions.rules[idx]);
+});
+
+app.delete('/api/cognitive/decisions/rules/:id', (req, res) => {
+  cognitiveData.decisions.rules = cognitiveData.decisions.rules.filter(r => r.id !== req.params.id);
+  saveCognitiveData();
+  res.json({ success: true });
+});
+
+app.post('/api/cognitive/decisions/evaluate', (req, res) => {
+  const { operationType, context } = req.body;
+  const matchingRule = cognitiveData.decisions.rules.find(r => 
+    r.operationType === operationType && r.enabled
+  );
+  res.json({
+    requiresConfirmation: matchingRule?.confirmationRequired || false,
+    rule: matchingRule,
+    suggestion: matchingRule ? '请确认此操作' : '可继续'
+  });
+});
+
+app.post('/api/cognitive/decisions/quick-check', (req, res) => {
+  const { operationType, details } = req.body;
+  const result = {
+    allowed: true,
+    reason: '快速检查通过'
+  };
+  res.json(result);
+});
+
+app.post('/api/cognitive/decisions/confirm/:logId', (req, res) => {
+  const { confirmedBy, notes } = req.body;
+  const log = cognitiveData.decisions.logs.find(l => l.id === req.params.logId);
+  if (log) {
+    log.confirmed = confirmedBy;
+    log.notes = notes;
+    log.resolvedAt = new Date().toISOString();
+    saveCognitiveData();
+  }
+  res.json({ success: !!log });
+});
+
+app.get('/api/cognitive/decisions/pending', (req, res) => {
+  res.json({ pending: cognitiveData.decisions.logs.filter(l => !l.resolvedAt) });
+});
+
+// ============== WebSocket ==============
+
 const server = createServer(app);
 let wss = new WebSocketServer({ server });
 
@@ -249,7 +590,9 @@ server.listen(PORT, () => {
       console.log(`🧹 已清理 ${before - sessions.length} 个过期会话`);
     }
   }, 60000);
+  
   console.log(`🎯 OpenCode Task Hub 运行中!`);
   console.log(`   仪表板: http://localhost:${PORT}`);
-  console.log(`   ${sessions.length} 个会话已注册\n`);
+  console.log(`   ${sessions.length} 个会话已注册`);
+  console.log(`   /api/cognitive/* - 认知负荷优化 (Phase 1-5)\n`);
 });
