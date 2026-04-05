@@ -6,6 +6,7 @@ import { v4 as uuidv4 } from 'uuid';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { exec } from 'child_process';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PORT = process.env.PORT || 3030;
@@ -59,9 +60,41 @@ app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', timestamp: Date.now() });
 });
 
+app.get('/api/processes', (req, res) => {
+  exec('tasklist /FO CSV /NH', { encoding: 'utf8' }, (err, stdout) => {
+    if (err) return res.status(500).json({ error: err.message });
+    const processes = stdout.split('\n')
+      .filter(line => line.trim())
+      .map(line => {
+        const parts = line.split('","');
+        if (parts.length >= 2) {
+          return {
+            name: parts[0].replace(/"/g, ''),
+            pid: parseInt(parts[1].replace(/"/g, '')),
+            sessionName: parts.length > 4 ? parts[4].replace(/"/g, '') : ''
+          };
+        }
+        return null;
+      })
+      .filter(p => p && (p.name.toLowerCase().includes('cmd') || p.name.toLowerCase().includes('powershell')));
+    res.json({ processes });
+  });
+});
+
+app.post('/api/processes/:pid/focus', (req, res) => {
+  const pid = parseInt(req.params.pid);
+  exec(`powershell -Command "(Get-Process -Id ${pid}).MainWindowHandle | ForEach-Object { if ($_) { Set-ForegroundWindow $_ } }"`, (err, stdout, stderr) => {
+    if (err) {
+      res.json({ success: false, error: stderr || err.message });
+    } else {
+      res.json({ success: true, pid });
+    }
+  });
+});
+
 app.post('/api/sessions/register', (req, res) => {
   console.log('[SESSION] Register request:', req.body);
-  const { sessionId, projectPath, projectName, hostname, name, description, context, cwd } = req.body;
+  const { sessionId, projectPath, projectName, hostname, name, description, context, cwd, pid } = req.body;
   const projectKey = hostname ? `${hostname}:${projectPath || cwd}` : sessionId;
   const existing = sessions.find(s => s.projectKey === projectKey || s.sessionId === sessionId);
   if (existing) {
@@ -69,6 +102,7 @@ app.post('/api/sessions/register', (req, res) => {
     existing.lastHeartbeat = new Date().toISOString();
     existing.status = 'active';
     if (projectName) existing.projectName = projectName;
+    if (pid) existing.pid = pid;
     saveData();
     broadcast({ type: 'session:updated', session: existing });
     return res.json(existing);
@@ -84,6 +118,7 @@ app.post('/api/sessions/register', (req, res) => {
     createdAt: new Date().toISOString(),
     lastHeartbeat: new Date().toISOString(),
     lastActive: '已连接',
+    pid: pid || null,
     context: context || {},
     description: description || ''
   };
@@ -101,6 +136,7 @@ app.post('/api/sessions/:sessionId/heartbeat', (req, res) => {
   if (session) {
     session.sessionId = req.params.sessionId;
     if (req.body.projectName) session.projectName = req.body.projectName;
+    if (req.body.pid) session.pid = req.body.pid;
     session.lastHeartbeat = new Date().toISOString();
     session.status = 'active';
     saveData();

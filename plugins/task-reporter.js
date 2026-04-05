@@ -82,11 +82,12 @@ async function registerSession(sessionId, projectPath, projectName) {
     projectPath,
     projectName,
     hostname: os.hostname(),
+    pid: process.pid
   });
 }
 
 async function heartbeat(sessionId, projectKey) {
-  await api(`/api/sessions/${sessionId}/heartbeat`, "POST", { projectKey });
+  await api(`/api/sessions/${sessionId}/heartbeat`, "POST", { projectKey, pid: process.pid });
 }
 
 async function logActivity(sessionId, projectKey, description) {

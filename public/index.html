@@ -95,6 +95,8 @@
     .task-meta { font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; }
     .task-actions { display: flex; gap: 0.25rem; }
     .btn { padding: 0.375rem 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.7rem; transition: all 0.2s; }
+    .btn-mini { padding: 0.125rem 0.375rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.65rem; background: #3b82f620; color: #60a5fa; }
+    .btn-mini:hover { background: #3b82f640; }
     .btn-primary { background: #3b82f6; color: white; }
     .btn-primary:hover { background: #2563eb; }
     .btn-success { background: #22c55e; color: white; }
@@ -450,6 +452,7 @@
                 ${ratePerMin > 0 ? `<span class="badge" style="background:#f59e0b80;">${formatTokens(ratePerMin)}/min</span>` : ''}
                 <span class="badge">${(s.activities || []).length} 活动</span>
                 <span class="session-status ${s.status || 'active'}"></span>
+                ${s.pid ? `<button class="btn-mini" onclick="event.stopPropagation();focusWindow('${escapeHtml(s.projectKey)}')" title="聚焦窗口">🎯 聚焦</button>` : ''}
                 <span style="color:#64748b;font-size:0.7rem;">${isExpanded ? '▲' : '▼'}</span>
               </div>
               <div class="session-meta">${escapeHtml(s.projectPath || '')}</div>
@@ -510,6 +513,33 @@
         expandedSessions.add(sessionId);
       }
       renderSessions();
+    }
+
+    async function focusWindow(projectKey) {
+      const session = allSessions.find(s => s.projectKey === projectKey);
+      if (!session || !session.pid) {
+        alert('无法找到对应窗口');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/processes/${session.pid}/focus`, { method: 'POST' });
+        const data = await res.json();
+        if (!data.success) {
+          console.log('聚焦失败，尝试其他方式');
+        }
+      } catch (e) {
+        console.error('聚焦窗口失败:', e);
+      }
+    }
+
+    async function loadProcesses() {
+      try {
+        const res = await fetch('/api/processes');
+        const data = await res.json();
+        return data.processes || [];
+      } catch (e) {
+        return [];
+      }
     }
 
     function formatTime(timestamp) {
