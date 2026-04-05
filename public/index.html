@@ -123,6 +123,70 @@
     .activity-detail.visible { display: block; }
     .session-detail { font-size: 0.8rem; }
     .btn-small { padding: 0.25rem 0.5rem; font-size: 0.65rem; }
+
+    /* Cognitive Load Panel */
+    .main-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+    .cognitive-section { background: #1e293b; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; max-height: calc(100vh - 200px); overflow-y: auto; }
+    .cognitive-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #334155; flex-shrink: 0; }
+    .cognitive-title { font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .phase-tag { font-size: 0.65rem; padding: 0.125rem 0.375rem; border-radius: 4px; font-weight: 600; }
+    .phase-tag.p1 { background: #22c55e30; color: #22c55e; }
+    .phase-tag.p2 { background: #3b82f630; color: #3b82f6; }
+    .phase-tag.p3 { background: #f59e0b30; color: #f59e0b; }
+    .phase-tag.p4 { background: #ef444430; color: #ef4444; }
+    .cognitive-tabs { display: flex; gap: 0.25rem; margin-bottom: 0.75rem; flex-shrink: 0; }
+    .cog-tab { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer; background: #334155; color: #94a3b8; border: none; transition: all 0.2s; }
+    .cog-tab:hover { background: #475569; }
+    .cog-tab.active { background: #3b82f6; color: white; }
+    .cognitive-content { flex: 1; overflow-y: auto; }
+    .cognitive-empty { text-align: center; padding: 1.5rem; color: #64748b; font-size: 0.8rem; }
+
+    /* Confidence Meter */
+    .confidence-card { background: #0f172a; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem; }
+    .confidence-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .confidence-name { font-size: 0.8rem; font-weight: 500; }
+    .confidence-score { font-size: 0.75rem; font-weight: 600; padding: 0.125rem 0.375rem; border-radius: 4px; }
+    .confidence-score.high { background: #22c55e30; color: #22c55e; }
+    .confidence-score.medium { background: #f59e0b30; color: #f59e0b; }
+    .confidence-score.low { background: #ef444430; color: #ef4444; }
+    .confidence-bar { height: 4px; background: #334155; border-radius: 2px; overflow: hidden; }
+    .confidence-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .confidence-fill.high { background: #22c55e; }
+    .confidence-fill.medium { background: #f59e0b; }
+    .confidence-fill.low { background: #ef4444; }
+    .confidence-action { font-size: 0.7rem; color: #94a3b8; margin-top: 0.25rem; }
+
+    /* Summary Cards in Cognitive Panel */
+    .cog-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem; }
+    .cog-stat { background: #0f172a; border-radius: 6px; padding: 0.75rem; text-align: center; }
+    .cog-stat-value { font-size: 1.25rem; font-weight: 600; }
+    .cog-stat-label { font-size: 0.65rem; color: #64748b; margin-top: 0.125rem; }
+
+    /* SOP List */
+    .sop-item { background: #0f172a; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem; cursor: pointer; transition: background 0.2s; }
+    .sop-item:hover { background: #1e293b; }
+    .sop-name { font-size: 0.8rem; font-weight: 500; margin-bottom: 0.25rem; }
+    .sop-meta { font-size: 0.7rem; color: #64748b; }
+    .sop-steps { font-size: 0.65rem; color: #94a3b8; margin-top: 0.25rem; display: flex; gap: 0.25rem; flex-wrap: wrap; }
+    .sop-step { background: #334155; padding: 0.125rem 0.375rem; border-radius: 3px; }
+
+    /* Decision Rules */
+    .rule-item { background: #0f172a; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .rule-icon { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .rule-icon.confirm { background: #ef4444; }
+    .rule-icon.auto { background: #22c55e; }
+    .rule-name { font-size: 0.75rem; flex: 1; }
+    .rule-risk { font-size: 0.65rem; padding: 0.125rem 0.375rem; border-radius: 3px; }
+    .rule-risk.high { background: #ef444430; color: #ef4444; }
+    .rule-risk.medium { background: #f59e0b30; color: #f59e0b; }
+    .rule-risk.low { background: #22c55e30; color: #22c55e; }
+
+    /* Test Button */
+    .test-btn { width: 100%; padding: 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.75rem; margin-top: 0.5rem; }
+    .test-btn:hover { background: #2563eb; }
+    .test-result { margin-top: 0.5rem; padding: 0.5rem; background: #0f172a; border-radius: 6px; font-size: 0.7rem; }
+    .test-result.success { border-left: 3px solid #22c55e; }
+    .test-result.error { border-left: 3px solid #ef4444; }
   </style>
 </head>
 <body>
@@ -170,7 +234,7 @@
       </div>
     </div>
 
-    <div class="main-grid">
+    <div class="main-grid" style="grid-template-columns: 1fr 1fr">
       <div class="section">
         <div class="section-header">
           <div class="section-title">OpenCode 会话</div>
@@ -194,6 +258,31 @@
           <button class="btn btn-primary" onclick="addTask()">添加</button>
         </div>
         <div class="tasks-container" id="tasksContainer"></div>
+      </div>
+
+      <!-- Cognitive Load Panel -->
+      <div class="cognitive-section">
+        <div class="cognitive-header">
+          <div class="cognitive-title">
+            🧠 认知负荷
+            <span class="phase-tag p1">P1</span>
+            <span class="phase-tag p2">P2</span>
+            <span class="phase-tag p3">P3</span>
+            <span class="phase-tag p4">P4</span>
+          </div>
+          <span class="badge" id="cognitiveStatus">测试中</span>
+        </div>
+        <div class="cognitive-tabs">
+          <button class="cog-tab active" onclick="switchCogTab('summary')">概览</button>
+          <button class="cog-tab" onclick="switchCogTab('confidence')">置信度</button>
+          <button class="cog-tab" onclick="switchCogTab('sops')">SOP</button>
+          <button class="cog-tab" onclick="switchCogTab('decisions')">决策</button>
+        </div>
+        <div class="cognitive-content" id="cognitiveContent">
+          <div class="cognitive-empty">加载中...</div>
+        </div>
+        <button class="test-btn" onclick="testCognitiveAPI()">🧪 测试 API 连接</button>
+        <div id="testResult"></div>
       </div>
     </div>
   </div>
@@ -573,6 +662,240 @@
 
     loadData();
     connect();
+
+    // ============== Cognitive Load Panel ==============
+    let currentCogTab = 'summary';
+
+    async function testCognitiveAPI() {
+      const resultDiv = document.getElementById('testResult');
+      resultDiv.innerHTML = '<div style="font-size:0.7rem;color:#64748b;">测试中...</div>';
+
+      try {
+        // 测试置信度 API
+        const confRes = await fetch('/api/cognitive/confidence/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ outputType: 'task-creation', outputContent: '创建测试任务' })
+        });
+        const confData = await confRes.json();
+
+        // 测试 SOP API
+        const sopRes = await fetch('/api/cognitive/sops');
+        const sopData = await sopRes.json();
+
+        // 测试决策规则 API
+        const decRes = await fetch('/api/cognitive/decisions/rules');
+        const decData = await decRes.json();
+
+        resultDiv.innerHTML = `
+          <div class="test-result success">
+            <div style="color:#22c55e;font-weight:600;">✅ API 全部正常</div>
+            <div style="margin-top:0.25rem;color:#94a3b8;">
+              置信度: ${confData.score ? (confData.score * 100).toFixed(0) + '%' : 'N/A'} |
+              SOP数: ${sopData.sops?.length || 0} |
+              规则数: ${decData.rules?.length || 0}
+            </div>
+          </div>
+        `;
+        document.getElementById('cognitiveStatus').textContent = '正常';
+        document.getElementById('cognitiveStatus').style.background = '#22c55e30';
+
+        // 加载默认标签页
+        loadCognitiveData();
+      } catch (e) {
+        resultDiv.innerHTML = `
+          <div class="test-result error">
+            <div style="color:#ef4444;font-weight:600;">❌ API 连接失败</div>
+            <div style="margin-top:0.25rem;color:#94a3b8;font-size:0.65rem;">${e.message}</div>
+          </div>
+        `;
+        document.getElementById('cognitiveStatus').textContent = '离线';
+        document.getElementById('cognitiveStatus').style.background = '#ef444430';
+      }
+    }
+
+    function switchCogTab(tab) {
+      currentCogTab = tab;
+      document.querySelectorAll('.cog-tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      loadCognitiveData();
+    }
+
+    async function loadCognitiveData() {
+      const content = document.getElementById('cognitiveContent');
+      try {
+        switch (currentCogTab) {
+          case 'summary':
+            await loadCogSummary(content);
+            break;
+          case 'confidence':
+            await loadConfidenceData(content);
+            break;
+          case 'sops':
+            await loadSOPData(content);
+            break;
+          case 'decisions':
+            await loadDecisionData(content);
+            break;
+        }
+      } catch (e) {
+        content.innerHTML = `<div class="cognitive-empty">加载失败: ${e.message}</div>`;
+      }
+    }
+
+    async function loadCogSummary(content) {
+      const [sopRes, decRes, confRes] = await Promise.all([
+        fetch('/api/cognitive/sops'),
+        fetch('/api/cognitive/decisions/rules'),
+        fetch('/api/cognitive/confidence/history?limit=5')
+      ]);
+      const sops = (await sopRes.json()).sops || [];
+      const rules = (await decRes.json()).rules || [];
+      const history = (await confRes.json()).history || [];
+      const confirmRequired = rules.filter(r => r.requiresConfirmation).length;
+
+      content.innerHTML = `
+        <div class="cog-summary">
+          <div class="cog-stat">
+            <div class="cog-stat-value" style="color:#3b82f6;">${sops.length}</div>
+            <div class="cog-stat-label">SOP模板</div>
+          </div>
+          <div class="cog-stat">
+            <div class="cog-stat-value" style="color:#f59e0b;">${confirmRequired}</div>
+            <div class="cog-stat-label">需确认规则</div>
+          </div>
+          <div class="cog-stat">
+            <div class="cog-stat-value" style="color:#22c55e;">${history.length}</div>
+            <div class="cog-stat-label">变更记录</div>
+          </div>
+        </div>
+        <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">🧠 三层负荷优化说明</div>
+        <div style="font-size:0.7rem;color:#64748b;line-height:1.6;">
+          <div style="margin-bottom:0.5rem;">
+            <span class="phase-tag p1" style="display:inline;">P1</span>
+            <strong>进度记忆</strong>: 记住上次查看位置，减少切换代价
+          </div>
+          <div style="margin-bottom:0.5rem;">
+            <span class="phase-tag p2" style="display:inline;">P2</span>
+            <strong>AI摘要</strong>: 3句话概括Session状态
+          </div>
+          <div style="margin-bottom:0.5rem;">
+            <span class="phase-tag p3" style="display:inline;">P3</span>
+            <strong>置信度</strong>: 自动/通知/确认 三级动作
+          </div>
+          <div>
+            <span class="phase-tag p4" style="display:inline;">P4</span>
+            <strong>SOP+边界</strong>: 标准化流程，明确决策边界
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadConfidenceData(content) {
+      // 测试评估一个操作的置信度
+      const testOps = [
+        { outputType: 'task-creation', outputContent: '创建一个新任务' },
+        { outputType: 'code', outputContent: '修改了 config 文件' },
+        { outputType: 'delete', outputContent: '删除某个文件' }
+      ];
+
+      let html = '<div style="font-size:0.7rem;color:#64748b;margin-bottom:0.5rem;">置信度评估示例:</div>';
+      for (const op of testOps) {
+        try {
+          const res = await fetch('/api/cognitive/confidence/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(op)
+          });
+          const data = await res.json();
+          const level = data.level || 'medium';
+          const score = (data.score * 100).toFixed(0);
+          const actionLabel = data.action === 'auto' ? '自动执行' : data.action === 'notify' ? '通知我' : '需确认';
+          html += `
+            <div class="confidence-card">
+              <div class="confidence-header">
+                <span class="confidence-name">${op.outputType}</span>
+                <span class="confidence-score ${level}">${score}% ${actionLabel}</span>
+              </div>
+              <div class="confidence-bar">
+                <div class="confidence-fill ${level}" style="width:${score}%"></div>
+              </div>
+              <div class="confidence-action">${data.summary || ''}</div>
+            </div>
+          `;
+        } catch (e) {
+          html += `<div class="cognitive-empty">加载失败: ${e.message}</div>`;
+          break;
+        }
+      }
+      content.innerHTML = html;
+    }
+
+    async function loadSOPData(content) {
+      const res = await fetch('/api/cognitive/sops');
+      const data = await res.json();
+      const sops = data.sops || [];
+
+      if (sops.length === 0) {
+        content.innerHTML = '<div class="cognitive-empty">暂无 SOP 模板</div>';
+        return;
+      }
+
+      let html = '';
+      for (const sop of sops.slice(0, 5)) {
+        const steps = JSON.parse(sop.steps || '[]');
+        html += `
+          <div class="sop-item">
+            <div class="sop-name">${sop.name}</div>
+            <div class="sop-meta">触发: ${sop.trigger?.type || 'all'} | 使用 ${sop.usage_count || 0} 次</div>
+            <div class="sop-steps">
+              ${steps.map(s => `<span class="sop-step">${s.name}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+      content.innerHTML = html;
+    }
+
+    async function loadDecisionData(content) {
+      const res = await fetch('/api/cognitive/decisions/rules');
+      const data = await res.json();
+      const rules = data.rules || [];
+
+      if (rules.length === 0) {
+        content.innerHTML = '<div class="cognitive-empty">暂无决策规则</div>';
+        return;
+      }
+
+      let html = '<div style="font-size:0.7rem;color:#64748b;margin-bottom:0.5rem;">需确认的操作:</div>';
+      const confirmRules = rules.filter(r => r.requiresConfirmation).slice(0, 8);
+      for (const rule of confirmRules) {
+        html += `
+          <div class="rule-item">
+            <span class="rule-icon confirm"></span>
+            <span class="rule-name">${rule.name}</span>
+            <span class="rule-risk ${rule.risk_level}">${rule.risk_level}</span>
+          </div>
+        `;
+      }
+
+      const autoRules = rules.filter(r => !r.requiresConfirmation).slice(0, 5);
+      if (autoRules.length > 0) {
+        html += '<div style="font-size:0.7rem;color:#64748b;margin:0.75rem 0 0.5rem;">可自动执行:</div>';
+        for (const rule of autoRules) {
+          html += `
+            <div class="rule-item">
+              <span class="rule-icon auto"></span>
+              <span class="rule-name">${rule.name}</span>
+            </div>
+          `;
+        }
+      }
+      content.innerHTML = html;
+    }
+
+    // 初始化时自动测试 API
+    setTimeout(testCognitiveAPI, 1000);
   </script>
 </body>
 </html>
