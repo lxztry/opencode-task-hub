@@ -227,6 +227,177 @@ app.delete('/api/tasks/:id', authenticate, (req, res) => {
   res.status(204).send();
 });
 
+// ============== Long-Running Task System ==============
+
+interface LongRunningTask {
+  id: string;
+  title: string;
+  description: string;
+  status: 'planning' | 'pending' | 'running' | 'paused' | 'completed' | 'failed';
+  progress: number;         // 0-100
+  checkpoints: TaskCheckpoint[];
+  subtasks: SubTask[];
+  plan: TaskPlan;
+  createdAt: number;
+  updatedAt: number;
+  startedAt?: number;
+  completedAt?: number;
+  estimatedHours: number;
+  actualHours: number;
+  sessionId?: string;
+  projectKey?: string;
+  metadata: {
+    priority: 'low' | 'medium' | 'high' | 'critical';
+    tags: string[];
+    assignees: string[];
+    dependencies: string[];
+    blockers: string[];
+    autoExpand: boolean;     // 自动拆解子任务
+    selfPlanning: boolean;   // 自我规划
+  };
+}
+
+interface TaskCheckpoint {
+  id: string;
+  name: string;
+  timestamp: number;
+  progress: number;
+  state: any;  // 当时的任务状态快照
+  note?: string;
+}
+
+interface SubTask {
+  id: string;
+  title: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped';
+  progress: number;
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  assignee?: string;
+  dependencies: string[];
+  createdAt: number;
+  completedAt?: number;
+  notes?: string;
+}
+
+interface TaskPlan {
+  steps: PlanStep[];
+  currentStep: number;
+  totalSteps: number;
+  estimatedMinutes: number;
+  actualMinutes: number;
+}
+
+interface PlanStep {
+  id: string;
+  name: string;
+  description: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'skipped';
+  estimatedMinutes: number;
+  actualMinutes: number;
+  startedAt?: number;
+  completedAt?: number;
+  result?: string;
+}
+
+const longRunningTasks: Map<string, LongRunningTask> = new Map();
+
+// 自动规划引擎
+class TaskPlanner {
+  static analyzeAndPlan(task: Partial<LongRunningTask>): TaskPlan {
+    const title = task.title || '';
+    const description = task.description || '';
+    const combined = title + ' ' + description;
+    
+    // 基于关键词生成计划步骤
+    const steps: PlanStep[] = [];
+    
+    // 检测任务类型并生成对应步骤
+    if (/代码|code|开发|开发|实现|功能|feature/i.test(combined)) {
+      steps.push(
+        { id: uuidv4(), name: '需求分析', description: '理解任务需求，明确功能点', status: 'pending', estimatedMinutes: 30 },
+        { id: uuidv4(), name: '技术设计', description: '设计技术方案，确定实现路径', status: 'pending', estimatedMinutes: 45 },
+        { id: uuidv4(), name: '代码实现', description: '编写代码，完成功能开发', status: 'pending', estimatedMinutes: 120 },
+        { id: uuidv4(), name: '测试验证', description: '编写测试用例，验证功能', status: 'pending', estimatedMinutes: 45 },
+        { id: uuidv4(), name: '代码审查', description: 'Review代码，优化质量', status: 'pending', estimatedMinutes: 30 },
+        { id: uuidv4(), name: '文档更新', description: '更新相关文档', status: 'pending', estimatedMinutes: 15 }
+      );
+    } else if (/bug|修复|fix|错误/i.test(combined)) {
+      steps.push(
+        { id: uuidv4(), name: '问题定位', description: '复现问题，找到根因', status: 'pending', estimatedMinutes: 30 },
+        { id: uuidv4(), name: '修复方案', description: '制定修复方案', status: 'pending', estimatedMinutes: 15 },
+        { id: uuidv4(), name: '实施修复', description: '修改代码，修复bug', status: 'pending', estimatedMinutes: 60 },
+        { id: uuidv4(), name: '验证测试', description: '验证修复有效', status: 'pending', estimatedMinutes: 30 }
+      );
+    } else if (/文档|docs?|说明|readme|写作/i.test(combined)) {
+      steps.push(
+        { id: uuidv4(), name: '内容规划', description: '规划文档结构和内容', status: 'pending', estimatedMinutes: 20 },
+        { id: uuidv4(), name: '撰写初稿', description: '完成文档初稿', status: 'pending', estimatedMinutes: 60 },
+        { id: uuidv4(), name: '审核校对', description: '审核内容，校对文字', status: 'pending', estimatedMinutes: 20 }
+      );
+    } else {
+      // 默认计划
+      steps.push(
+        { id: uuidv4(), name: '调研准备', description: '收集信息，准备材料', status: 'pending', estimatedMinutes: 30 },
+        { id: uuidv4(), name: '执行主体', description: '完成任务主体工作', status: 'pending', estimatedMinutes: 90 },
+        { id: uuidv4(), name: '收尾整理', description: '整理结果，完成收尾', status: 'pending', estimatedMinutes: 15 }
+      );
+    }
+    
+    const totalMinutes = steps.reduce((sum, s) => sum + s.estimatedMinutes, 0);
+    
+    return {
+      steps,
+      currentStep: 0,
+      totalSteps: steps.length,
+      estimatedMinutes: totalMinutes,
+      actualMinutes: 0
+    };
+  }
+  
+  static async autoExpandTask(task: LongRunningTask): Promise<SubTask[]> {
+    const subtasks: SubTask[] = [];
+    const plan = task.plan;
+    
+    // 根据计划步骤自动拆解子任务
+    for (const step of plan.steps) {
+      const subtask: SubTask = {
+        id: uuidv4(),
+        title: `[${task.title}] ${step.name}`,
+        status: 'pending',
+        progress: 0,
+        priority: task.metadata.priority,
+        dependencies: [],
+        createdAt: Date.now(),
+        notes: step.description
+      };
+      subtasks.push(subtask);
+    }
+    
+    return subtasks;
+  }
+  
+  static calculateProgress(task: LongRunningTask): number {
+    if (!task.plan || task.plan.steps.length === 0) return 0;
+    
+    let totalWeight = 0;
+    let completedWeight = 0;
+    
+    for (const step of task.plan.steps) {
+      const weight = step.estimatedMinutes;
+      totalWeight += weight;
+      
+      if (step.status === 'completed') {
+        completedWeight += weight;
+      } else if (step.status === 'in_progress' && step.actualMinutes) {
+        // 进行中的步骤按实际时间比例计算
+        completedWeight += Math.min(step.actualMinutes / step.estimatedMinutes, 1) * weight;
+      }
+    }
+    
+    return totalWeight > 0 ? Math.round((completedWeight / totalWeight) * 100) : 0;
+  }
+}
+
 // ============== Session Health Calculator ==============
 
 interface SessionHealth {
@@ -761,6 +932,465 @@ app.post('/api/cognitive/decisions/confirm/:logId', (req, res) => {
 app.get('/api/cognitive/decisions/pending', (req, res) => {
   res.json({ pending: cognitiveData.decisions.logs.filter(l => !l.resolvedAt) });
 });
+
+// ============== Long-Running Task APIs ==============
+
+// 创建长跑任务
+app.post('/api/long-tasks', (req, res) => {
+  const { title, description, priority, tags, sessionId, projectKey, autoExpand, selfPlanning } = req.body;
+  
+  if (!title) {
+    return res.status(400).json({ error: 'Title is required' });
+  }
+  
+  const id = `longtask_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+  const now = Date.now();
+  
+  // 自动生成计划
+  const plan = TaskPlanner.analyzeAndPlan({ title, description });
+  
+  const task: LongRunningTask = {
+    id,
+    title,
+    description: description || '',
+    status: selfPlanning ? 'planning' : 'pending',
+    progress: 0,
+    checkpoints: [],
+    subtasks: [],
+    plan,
+    createdAt: now,
+    updatedAt: now,
+    estimatedHours: Math.round(plan.estimatedMinutes / 60 * 10) / 10,
+    actualHours: 0,
+    sessionId,
+    projectKey,
+    metadata: {
+      priority: priority || 'medium',
+      tags: tags || [],
+      assignees: [],
+      dependencies: [],
+      blockers: [],
+      autoExpand: autoExpand !== false,
+      selfPlanning: selfPlanning !== false
+    }
+  };
+  
+  // 如果启用自动拆解
+  if (task.metadata.autoExpand) {
+    task.subtasks = TaskPlanner.autoExpandTask(task);
+  }
+  
+  longRunningTasks.set(id, task);
+  saveLongTasks();
+  
+  res.status(201).json(task);
+});
+
+// 获取所有长跑任务
+app.get('/api/long-tasks', (req, res) => {
+  const { status, sessionId, projectKey } = req.query;
+  
+  let tasks = Array.from(longRunningTasks.values());
+  
+  if (status) {
+    const statuses = (status as string).split(',');
+    tasks = tasks.filter(t => statuses.includes(t.status));
+  }
+  
+  if (sessionId) {
+    tasks = tasks.filter(t => t.sessionId === sessionId);
+  }
+  
+  if (projectKey) {
+    tasks = tasks.filter(t => t.projectKey === projectKey);
+  }
+  
+  // 按状态和更新时间排序
+  tasks.sort((a, b) => {
+    const statusOrder = { running: 0, planning: 1, paused: 2, pending: 3, failed: 4, completed: 5 };
+    const diff = (statusOrder[a.status] || 6) - (statusOrder[b.status] || 6);
+    if (diff !== 0) return diff;
+    return b.updatedAt - a.updatedAt;
+  });
+  
+  res.json({ tasks, total: tasks.length });
+});
+
+// 获取单个长跑任务
+app.get('/api/long-tasks/:id', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  res.json(task);
+});
+
+// 更新任务状态
+app.patch('/api/long-tasks/:id', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  const { status, progress, title, description, priority, tags } = req.body;
+  
+  if (status) {
+    task.status = status;
+    if (status === 'running' && !task.startedAt) {
+      task.startedAt = Date.now();
+    }
+    if (status === 'completed' && !task.completedAt) {
+      task.completedAt = Date.now();
+    }
+  }
+  
+  if (progress !== undefined) {
+    task.progress = progress;
+  }
+  
+  if (title) task.title = title;
+  if (description !== undefined) task.description = description;
+  if (priority) task.metadata.priority = priority;
+  if (tags) task.metadata.tags = tags;
+  
+  task.updatedAt = Date.now();
+  task.progress = TaskPlanner.calculateProgress(task);
+  
+  saveLongTasks();
+  broadcast({ type: 'longtask:updated', task });
+  
+  res.json(task);
+});
+
+// 启动任务
+app.post('/api/long-tasks/:id/start', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  task.status = 'running';
+  task.startedAt = task.startedAt || Date.now();
+  task.updatedAt = Date.now();
+  
+  // 启动第一个待处理的步骤
+  const pendingStep = task.plan.steps.find(s => s.status === 'pending');
+  if (pendingStep) {
+    pendingStep.status = 'in_progress';
+    pendingStep.startedAt = Date.now();
+    task.plan.currentStep = task.plan.steps.indexOf(pendingStep);
+  }
+  
+  task.progress = TaskPlanner.calculateProgress(task);
+  saveLongTasks();
+  broadcast({ type: 'longtask:started', task });
+  
+  res.json(task);
+});
+
+// 暂停任务
+app.post('/api/long-tasks/:id/pause', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  task.status = 'paused';
+  task.updatedAt = Date.now();
+  
+  // 暂停当前步骤
+  const inProgressStep = task.plan.steps.find(s => s.status === 'in_progress');
+  if (inProgressStep && inProgressStep.startedAt) {
+    inProgressStep.actualMinutes = (Date.now() - inProgressStep.startedAt) / 60000;
+    inProgressStep.status = 'pending'; // 回到待处理，可以恢复
+  }
+  
+  task.progress = TaskPlanner.calculateProgress(task);
+  saveLongTasks();
+  broadcast({ type: 'longtask:paused', task });
+  
+  res.json(task);
+});
+
+// 恢复任务
+app.post('/api/long-tasks/:id/resume', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  task.status = 'running';
+  task.updatedAt = Date.now();
+  
+  // 恢复或开始下一个步骤
+  const nextStep = task.plan.steps.find(s => s.status === 'pending');
+  if (nextStep) {
+    nextStep.status = 'in_progress';
+    nextStep.startedAt = Date.now();
+    task.plan.currentStep = task.plan.steps.indexOf(nextStep);
+  }
+  
+  task.progress = TaskPlanner.calculateProgress(task);
+  saveLongTasks();
+  broadcast({ type: 'longtask:resumed', task });
+  
+  res.json(task);
+});
+
+// 完成步骤
+app.post('/api/long-tasks/:id/complete-step', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  const { stepId, result } = req.body;
+  
+  const step = task.plan.steps.find(s => s.id === stepId);
+  if (!step) {
+    return res.status(404).json({ error: 'Step not found' });
+  }
+  
+  step.status = 'completed';
+  step.completedAt = Date.now();
+  if (step.startedAt) {
+    step.actualMinutes = (step.completedAt - step.startedAt) / 60000;
+  }
+  step.result = result;
+  
+  // 计算实际花费时间
+  task.plan.actualMinutes = task.plan.steps.reduce((sum, s) => sum + (s.actualMinutes || 0), 0);
+  task.actualHours = Math.round(task.plan.actualMinutes / 60 * 100) / 100;
+  
+  // 启动下一个步骤
+  const nextStep = task.plan.steps.find(s => s.status === 'pending');
+  if (nextStep) {
+    nextStep.status = 'in_progress';
+    nextStep.startedAt = Date.now();
+    task.plan.currentStep = task.plan.steps.indexOf(nextStep);
+  } else {
+    // 所有步骤完成，任务完成
+    task.status = 'completed';
+    task.completedAt = Date.now();
+  }
+  
+  task.progress = TaskPlanner.calculateProgress(task);
+  task.updatedAt = Date.now();
+  
+  saveLongTasks();
+  broadcast({ type: 'longtask:step_completed', task, step });
+  
+  res.json(task);
+});
+
+// 创建检查点
+app.post('/api/long-tasks/:id/checkpoint', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  const { name, note } = req.body;
+  
+  const checkpoint: TaskCheckpoint = {
+    id: `cp_${Date.now()}`,
+    name: name || `检查点 ${task.checkpoints.length + 1}`,
+    timestamp: Date.now(),
+    progress: task.progress,
+    state: { ...task },
+    note
+  };
+  
+  task.checkpoints.push(checkpoint);
+  task.updatedAt = Date.now();
+  
+  saveLongTasks();
+  broadcast({ type: 'longtask:checkpoint_created', task, checkpoint });
+  
+  res.json(checkpoint);
+});
+
+// 恢复到检查点
+app.post('/api/long-tasks/:id/restore/:checkpointId', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  const checkpoint = task.checkpoints.find(c => c.id === req.params.checkpointId);
+  if (!checkpoint) {
+    return res.status(404).json({ error: 'Checkpoint not found' });
+  }
+  
+  // 恢复状态
+  const restoredState = checkpoint.state;
+  task.status = 'paused';
+  task.progress = checkpoint.progress;
+  task.updatedAt = Date.now();
+  
+  // 更新步骤状态
+  for (let i = 0; i < task.plan.steps.length; i++) {
+    const currentStepIndex = task.plan.steps.findIndex(s => s.status === 'in_progress');
+    if (currentStepIndex >= 0 && currentStepIndex >= i) {
+      task.plan.steps[currentStepIndex].status = 'pending';
+    }
+  }
+  
+  saveLongTasks();
+  broadcast({ type: 'longtask:restored', task, checkpoint });
+  
+  res.json(task);
+});
+
+// 重新规划任务
+app.post('/api/long-tasks/:id/replan', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  // 保留已完成步骤的记录，重新生成后续步骤
+  const completedSteps = task.plan.steps.filter(s => s.status === 'completed');
+  const newPlan = TaskPlanner.analyzeAndPlan({ title: task.title, description: task.description });
+  
+  // 合并已完成和新计划
+  const mergedSteps = [...completedSteps];
+  for (const step of newPlan.steps) {
+    if (!completedSteps.some(c => c.name === step.name)) {
+      mergedSteps.push(step);
+    }
+  }
+  
+  task.plan = {
+    steps: mergedSteps,
+    currentStep: completedSteps.length,
+    totalSteps: mergedSteps.length,
+    estimatedMinutes: mergedSteps.reduce((sum, s) => sum + s.estimatedMinutes, 0),
+    actualMinutes: task.plan.actualMinutes
+  };
+  
+  task.updatedAt = Date.now();
+  task.progress = TaskPlanner.calculateProgress(task);
+  
+  // 如果启用自动拆解，更新子任务
+  if (task.metadata.autoExpand) {
+    task.subtasks = TaskPlanner.autoExpandTask(task);
+  }
+  
+  saveLongTasks();
+  broadcast({ type: 'longtask:replanned', task });
+  
+  res.json(task);
+});
+
+// 添加子任务
+app.post('/api/long-tasks/:id/subtasks', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  const { title, priority, assignee, dependencies } = req.body;
+  
+  const subtask: SubTask = {
+    id: `sub_${Date.now()}`,
+    title,
+    status: 'pending',
+    progress: 0,
+    priority: priority || task.metadata.priority,
+    assignee,
+    dependencies: dependencies || [],
+    createdAt: Date.now()
+  };
+  
+  task.subtasks.push(subtask);
+  task.updatedAt = Date.now();
+  
+  saveLongTasks();
+  broadcast({ type: 'longtask:subtask_added', task, subtask });
+  
+  res.json(subtask);
+});
+
+// 更新子任务状态
+app.patch('/api/long-tasks/:id/subtasks/:subtaskId', (req, res) => {
+  const task = longRunningTasks.get(req.params.id);
+  if (!task) {
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  const subtask = task.subtasks.find(s => s.id === req.params.subtaskId);
+  if (!subtask) {
+    return res.status(404).json({ error: 'Subtask not found' });
+  }
+  
+  const { status, progress, notes } = req.body;
+  
+  if (status) {
+    subtask.status = status;
+    if (status === 'completed' && !subtask.completedAt) {
+      subtask.completedAt = Date.now();
+    }
+  }
+  
+  if (progress !== undefined) subtask.progress = progress;
+  if (notes) subtask.notes = notes;
+  
+  task.progress = TaskPlanner.calculateProgress(task);
+  task.updatedAt = Date.now();
+  
+  saveLongTasks();
+  broadcast({ type: 'longtask:subtask_updated', task, subtask });
+  
+  res.json(subtask);
+});
+
+// 获取任务统计
+app.get('/api/long-tasks/stats/summary', (req, res) => {
+  const tasks = Array.from(longRunningTasks.values());
+  
+  const stats = {
+    total: tasks.length,
+    running: tasks.filter(t => t.status === 'running').length,
+    paused: tasks.filter(t => t.status === 'paused').length,
+    completed: tasks.filter(t => t.status === 'completed').length,
+    planning: tasks.filter(t => t.status === 'planning').length,
+    totalHours: tasks.reduce((sum, t) => sum + t.actualHours, 0),
+    totalEstimatedHours: tasks.reduce((sum, t) => sum + t.estimatedHours, 0),
+    avgProgress: tasks.length > 0 
+      ? Math.round(tasks.reduce((sum, t) => sum + t.progress, 0) / tasks.length) 
+      : 0
+  };
+  
+  res.json(stats);
+});
+
+// 持久化
+function saveLongTasks() {
+  try {
+    const data = Array.from(longRunningTasks.values());
+    fs.writeFileSync(getCognitiveDataPath('longtasks.json'), JSON.stringify(data, null, 2));
+  } catch (e) {
+    console.error('Failed to save long tasks:', e);
+  }
+}
+
+function loadLongTasks() {
+  try {
+    const filePath = getCognitiveDataPath('longtasks.json');
+    if (fs.existsSync(filePath)) {
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      for (const task of data) {
+        longRunningTasks.set(task.id, task);
+      }
+    }
+  } catch (e) {
+    console.error('Failed to load long tasks:', e);
+  }
+}
+
+// 初始化加载
+loadLongTasks();
 
 // ============== Session Health APIs ==============
 
