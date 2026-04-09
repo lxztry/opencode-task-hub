@@ -20,6 +20,59 @@
     .badge { background: #334155; padding: 0.125rem 0.5rem; border-radius: 10px; font-size: 0.75rem; }
     .sessions-list, .tasks-container { flex: 1; overflow-y: auto; }
     .sessions-list { display: flex; flex-direction: column; gap: 0.75rem; max-height: calc(100vh - 280px); }
+    
+    /* View Switcher */
+    .view-switcher { display: flex; gap: 0.25rem; background: #0f172a; border-radius: 6px; padding: 0.125rem; }
+    .view-btn { padding: 0.25rem 0.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem; background: transparent; color: #64748b; transition: all 0.2s; }
+    .view-btn:hover { color: #94a3b8; }
+    .view-btn.active { background: #3b82f6; color: white; }
+    
+    /* Session Card - Grid View */
+    .sessions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; }
+    .session-card-grid { background: #0f172a; border-radius: 8px; padding: 1rem; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+    .session-card-grid:hover { border-color: #3b82f6; transform: translateY(-2px); }
+    .session-card-grid .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
+    .session-card-grid .card-title { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .session-card-grid .card-path { font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-card-grid .health-bar { height: 4px; background: #334155; border-radius: 2px; overflow: hidden; margin: 0.5rem 0; }
+    .session-card-grid .health-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .session-card-grid .health-fill.high { background: #22c55e; }
+    .session-card-grid .health-fill.medium { background: #f59e0b; }
+    .session-card-grid .health-fill.low { background: #ef4444; }
+    .session-card-grid .card-stats { display: flex; gap: 1rem; font-size: 0.7rem; color: #94a3b8; margin-top: 0.5rem; }
+    .session-card-grid .stat-item { display: flex; align-items: center; gap: 0.25rem; }
+    .session-card-grid .card-summary { font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem; padding: 0.5rem; background: #1e293b; border-radius: 6px; line-height: 1.4; }
+    .session-card-grid .priority-badge { padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.65rem; font-weight: 600; }
+    .session-card-grid .priority-badge.critical { background: #ef444430; color: #ef4444; }
+    .session-card-grid .priority-badge.high { background: #f59e0b30; color: #f59e0b; }
+    .session-card-grid .priority-badge.medium { background: #3b82f630; color: #3b82f6; }
+    .session-card-grid .priority-badge.low { background: #22c55e30; color: #22c55e; }
+    .session-card-grid .type-badge { background: #334155; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.65rem; }
+    .session-card-grid .blocker-warning { color: #ef4444; font-size: 0.7rem; display: flex; align-items: center; gap: 0.25rem; }
+    
+    /* Session Card - Compact View */
+    .sessions-compact { display: flex; flex-direction: column; gap: 0.5rem; }
+    .session-card-compact { background: #0f172a; border-radius: 6px; padding: 0.5rem 0.75rem; display: flex; align-items: center; gap: 0.75rem; cursor: pointer; transition: background 0.2s; }
+    .session-card-compact:hover { background: #1e293b; }
+    .session-card-compact .compact-health { width: 4px; height: 32px; border-radius: 2px; flex-shrink: 0; }
+    .session-card-compact .compact-name { flex: 1; font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-card-compact .compact-stats { font-size: 0.7rem; color: #64748b; display: flex; gap: 0.5rem; }
+    .session-card-compact .compact-progress { font-size: 0.7rem; color: #94a3b8; }
+    
+    /* Sort Controls */
+    .sort-controls { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .sort-btn { padding: 0.25rem 0.5rem; border: 1px solid #334155; border-radius: 4px; background: transparent; color: #94a3b8; font-size: 0.7rem; cursor: pointer; transition: all 0.2s; }
+    .sort-btn:hover { border-color: #3b82f6; color: #60a5fa; }
+    .sort-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
+    
+    /* Parse Task Input */
+    .parse-section { background: #0f172a; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; }
+    .parse-section label { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 0.5rem; }
+    .parse-input { width: 100%; padding: 0.5rem; border: 1px solid #334155; border-radius: 4px; background: #1e293b; color: #e2e8f0; font-size: 0.8rem; margin-bottom: 0.5rem; }
+    .parse-input:focus { outline: none; border-color: #3b82f6; }
+    .parse-result { font-size: 0.7rem; padding: 0.5rem; background: #1e293b; border-radius: 4px; margin-top: 0.5rem; }
+    .parse-result.success { border-left: 3px solid #22c55e; }
+    .parse-result.error { border-left: 3px solid #ef4444; }
     .session-card { background: #0f172a; border-radius: 8px; padding: 1rem; display: flex; gap: 1rem; align-items: flex-start; }
     .session-icon { font-size: 1.5rem; }
     .session-info { flex: 1; min-width: 0; }
@@ -194,7 +247,7 @@
 <body>
   <div class="container">
     <header>
-      <h1>OpenCode Task Hub</h1>
+      <h1>🎯 OpenCode Task Hub <span style="font-size:0.8rem;color:#64748b;">v2.3.0</span></h1>
       <div class="status">
         <div class="status-dot" id="wsStatus"></div>
         <span id="wsText">连接中...</span>
@@ -239,9 +292,23 @@
     <div class="main-grid" style="grid-template-columns: 1fr 1fr">
       <div class="section">
         <div class="section-header">
-          <div class="section-title">OpenCode 会话</div>
-          <span class="badge" id="sessionCount">0</span>
+          <div class="section-title">
+            💻 OpenCode 会话
+            <span class="badge" id="sessionCount">0</span>
+          </div>
+          <div class="view-switcher">
+            <button class="view-btn active" onclick="setView('grid')" title="卡片视图">▦</button>
+            <button class="view-btn" onclick="setView('list')" title="列表视图">☰</button>
+            <button class="view-btn" onclick="setView('compact')" title="紧凑视图">▤</button>
+          </div>
         </div>
+        
+        <div class="sort-controls">
+          <button class="sort-btn active" onclick="setSort('recent')" data-sort="recent">最近</button>
+          <button class="sort-btn" onclick="setSort('health')" data-sort="health">健康度</button>
+          <button class="sort-btn" onclick="setSort('priority')" data-sort="priority">优先级</button>
+        </div>
+        
         <div class="search-form">
           <input type="text" id="sessionSearchInput" placeholder="按项目名称搜索会话...">
           <button class="btn btn-primary" onclick="searchSessions()">搜索</button>
@@ -252,9 +319,19 @@
 
       <div class="section">
         <div class="section-header">
-          <div class="section-title">任务列表</div>
-          <span class="badge" id="taskCount">0</span>
+          <div class="section-title">
+            📋 任务列表
+            <span class="badge" id="taskCount">0</span>
+          </div>
         </div>
+        
+        <div class="parse-section">
+          <label>🧠 自然语言创建任务（自动解析）</label>
+          <input type="text" class="parse-input" id="parseTaskInput" placeholder="例如：创建用户登录功能 / 修复支付bug">
+          <button class="btn btn-primary" onclick="parseAndCreateTask()">解析并创建</button>
+          <div id="parseResult"></div>
+        </div>
+        
         <div class="add-form">
           <input type="text" id="newTaskInput" placeholder="输入新任务...">
           <button class="btn btn-primary" onclick="addTask()">添加</button>
@@ -295,6 +372,9 @@
     let ws = null;
     let expandedSessions = new Set();
     let searchQuery = '';
+    let currentView = 'grid';
+    let currentSort = 'recent';
+    let sessionHealths = {};
 
     function connect() {
       ws = new WebSocket('ws://localhost:3030');
@@ -317,10 +397,12 @@
             allSessions.forEach(s => expandedSessions.add(s.id));
           }
           render();
+          loadSessionHealths();
         } else if (data.type === 'session:created') {
           allSessions.push(data.session);
           expandedSessions.add(data.session.id);
           render();
+          loadSessionHealths();
         } else if (data.type === 'session:updated') {
           const idx = allSessions.findIndex(s => s.id === data.session.id);
           if (idx !== -1) allSessions[idx] = data.session;
@@ -368,12 +450,67 @@
         tokenUsageSummary: sessionsData.tokenUsageSummary || { totalTokens: 0 }
       });
       render();
+      loadSessionHealths();
+    }
+
+    async function loadSessionHealths() {
+      try {
+        const res = await fetch('/api/sessions/health');
+        const data = await res.json();
+        sessionHealths = {};
+        for (const h of data.sessions || []) {
+          sessionHealths[h.sessionId] = h;
+        }
+        renderSessions();
+      } catch (e) {
+        console.error('Failed to load session healths:', e);
+      }
     }
 
     function getFilteredSessions() {
       if (!searchQuery) return allSessions;
       const query = searchQuery.toLowerCase();
       return allSessions.filter(s => s.projectName.toLowerCase().includes(query));
+    }
+
+    function getSortedSessions(sessions) {
+      const sorted = [...sessions];
+      switch (currentSort) {
+        case 'health':
+          sorted.sort((a, b) => {
+            const healthA = sessionHealths[a.id]?.health || 50;
+            const healthB = sessionHealths[b.id]?.health || 50;
+            return healthA - healthB;
+          });
+          break;
+        case 'priority':
+          sorted.sort((a, b) => {
+            const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+            const priorityA = sessionHealths[a.id]?.priority || 'medium';
+            const priorityB = sessionHealths[b.id]?.priority || 'medium';
+            return (priorityOrder[priorityA] || 2) - (priorityOrder[priorityB] || 2);
+          });
+          break;
+        case 'recent':
+        default:
+          sorted.sort((a, b) => new Date(b.lastHeartbeat).getTime() - new Date(a.lastHeartbeat).getTime());
+          break;
+      }
+      return sorted;
+    }
+
+    function setView(view) {
+      currentView = view;
+      document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.view-btn[onclick="setView('${view}')"]`).classList.add('active');
+      renderSessions();
+    }
+
+    function setSort(sort) {
+      currentSort = sort;
+      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.sort-btn[data-sort="${sort}"]`).classList.add('active');
+      renderSessions();
     }
 
     async function searchSessions() {
@@ -424,24 +561,93 @@
     function renderSessions() {
       const list = document.getElementById('sessionsList');
       const filteredSessions = getFilteredSessions();
-      if (filteredSessions.length === 0) {
+      const sortedSessions = getSortedSessions(filteredSessions);
+      
+      if (sortedSessions.length === 0) {
         const msg = searchQuery ? '未找到匹配的会话' : '暂无活跃会话';
         const sub = searchQuery ? '尝试其他关键词' : '在 opencode 中打开项目即可自动显示';
         list.innerHTML = `<div class="empty"><div class="empty-icon">💻</div><div>${msg}</div><div style="font-size:0.7rem;margin-top:0.5rem">${sub}</div></div>`;
         return;
       }
-      list.innerHTML = filteredSessions.map(s => {
-        const sessionTasks = tasks.filter(t => t.sessionId === s.id || t.projectKey === s.projectKey);
-        const isExpanded = expandedSessions.has(s.id);
-        const tokenUsage = s.tokenUsage || {};
-        const totalTokens = tokenUsage.totalTokens || 0;
-        const inputTokens = tokenUsage.inputTokens || 0;
-        const outputTokens = tokenUsage.outputTokens || 0;
-        const conversationCount = tokenUsage.conversationCount || 0;
-        const usageRate = conversationCount > 0 ? Math.round(totalTokens / conversationCount) : 0;
-        const tokenRate = s.tokenRate || {};
-        const ratePerMin = tokenRate.perMinute || 0;
-        return `
+
+      // Render based on current view
+      if (currentView === 'grid') {
+        list.innerHTML = `<div class="sessions-grid">${sortedSessions.map(s => renderSessionCardGrid(s)).join('')}</div>`;
+      } else if (currentView === 'compact') {
+        list.innerHTML = `<div class="sessions-compact">${sortedSessions.map(s => renderSessionCardCompact(s)).join('')}</div>`;
+      } else {
+        list.innerHTML = sortedSessions.map(s => renderSessionCardList(s)).join('');
+      }
+    }
+
+    function renderSessionCardGrid(s) {
+      const health = sessionHealths[s.id] || { health: 50, progress: 0, blockers: 0, priority: 'medium', type: 'feature', velocity: 0, summary: '' };
+      const sessionTasks = tasks.filter(t => t.sessionId === s.id || t.projectKey === s.projectKey);
+      const completedTasks = sessionTasks.filter(t => t.status === 'completed').length;
+      const totalTasks = sessionTasks.length;
+      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      const healthLevel = health.health > 70 ? 'high' : health.health > 40 ? 'medium' : 'low';
+      const duration = health.duration ? formatDuration(health.duration) : 'N/A';
+      
+      return `
+        <div class="session-card-grid" onclick="toggleSessionDetail('${escapeHtml(s.id)}')">
+          <div class="card-header">
+            <div class="card-title">
+              <span>💻</span>
+              <span>${escapeHtml(s.projectName)}</span>
+            </div>
+            <div style="display:flex;gap:0.25rem;">
+              <span class="priority-badge ${health.priority}">${getPriorityLabel(health.priority)}</span>
+              <span class="type-badge">${getTypeLabel(health.type)}</span>
+            </div>
+          </div>
+          <div class="card-path">${escapeHtml(s.projectPath || '')}</div>
+          <div class="health-bar">
+            <div class="health-fill ${healthLevel}" style="width:${health.health}%"></div>
+          </div>
+          <div class="card-stats">
+            <span class="stat-item">🏥 ${health.health}%</span>
+            <span class="stat-item">📋 ${completedTasks}/${totalTasks}</span>
+            <span class="stat-item">⚡ ${health.velocity}/m</span>
+          </div>
+          ${health.blockers > 0 ? `<div class="blocker-warning">⚠️ ${health.blockers} 个阻塞项</div>` : ''}
+          <div class="card-summary">${escapeHtml(health.summary || s.lastActivity || '等待活动...')}</div>
+        </div>
+      `;
+    }
+
+    function renderSessionCardCompact(s) {
+      const health = sessionHealths[s.id] || { health: 50, progress: 0, blockers: 0, priority: 'medium' };
+      const sessionTasks = tasks.filter(t => t.sessionId === s.id || t.projectKey === s.projectKey);
+      const completedTasks = sessionTasks.filter(t => t.status === 'completed').length;
+      const totalTasks = sessionTasks.length;
+      const healthLevel = health.health > 70 ? 'high' : health.health > 40 ? 'medium' : 'low';
+      
+      return `
+        <div class="session-card-compact" onclick="toggleSessionDetail('${escapeHtml(s.id)}')">
+          <div class="compact-health" style="background:${healthLevel === 'high' ? '#22c55e' : healthLevel === 'medium' ? '#f59e0b' : '#ef4444'}"></div>
+          <span class="compact-name">${escapeHtml(s.projectName)}</span>
+          <span class="compact-stats">
+            <span>${completedTasks}/${totalTasks}</span>
+            <span>🏥${health.health}%</span>
+          </span>
+          ${health.blockers > 0 ? '<span style="color:#ef4444;font-size:0.7rem;">⚠️</span>' : ''}
+        </div>
+      `;
+    }
+
+    function renderSessionCardList(s) {
+      const sessionTasks = tasks.filter(t => t.sessionId === s.id || t.projectKey === s.projectKey);
+      const isExpanded = expandedSessions.has(s.id);
+      const tokenUsage = s.tokenUsage || {};
+      const totalTokens = tokenUsage.totalTokens || 0;
+      const inputTokens = tokenUsage.inputTokens || 0;
+      const outputTokens = tokenUsage.outputTokens || 0;
+      const conversationCount = tokenUsage.conversationCount || 0;
+      const usageRate = conversationCount > 0 ? Math.round(totalTokens / conversationCount) : 0;
+      const tokenRate = s.tokenRate || {};
+      const ratePerMin = tokenRate.perMinute || 0;
+      return `
           <div class="session-card">
             <div class="session-info" style="flex:1;min-width:0;">
               <div style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;" onclick="toggleSessionDetail('${escapeHtml(s.id)}')">
@@ -540,6 +746,24 @@
       } catch (e) {
         return [];
       }
+    }
+
+    function formatDuration(ms) {
+      if (!ms) return 'N/A';
+      const hours = Math.floor(ms / 3600000);
+      const minutes = Math.floor((ms % 3600000) / 60000);
+      if (hours > 0) return `${hours}h ${minutes}m`;
+      return `${minutes}m`;
+    }
+
+    function getPriorityLabel(priority) {
+      const labels = { critical: '紧急', high: '高', medium: '中', low: '低' };
+      return labels[priority] || '中';
+    }
+
+    function getTypeLabel(type) {
+      const labels = { sprint: 'Sprint', feature: '功能', bug: 'Bug', explore: '探索' };
+      return labels[type] || '功能';
     }
 
     function formatTime(timestamp) {
@@ -666,6 +890,57 @@
         body: JSON.stringify({ title, status: 'pending', priority: 'medium' })
       });
       input.value = '';
+    }
+
+    async function parseAndCreateTask() {
+      const input = document.getElementById('parseTaskInput');
+      const parseResult = document.getElementById('parseResult');
+      const text = input.value.trim();
+      if (!text) {
+        parseResult.innerHTML = '<div class="parse-result error">请输入任务描述</div>';
+        return;
+      }
+      
+      parseResult.innerHTML = '<div class="parse-result" style="border-left:3px solid #3b82f6;">正在解析...</div>';
+      
+      try {
+        // Find the most recent session to link the task
+        const session = allSessions.length > 0 ? allSessions[0] : null;
+        
+        const res = await fetch('/api/tasks/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            text, 
+            sessionId: session?.id,
+            projectKey: session?.projectKey
+          })
+        });
+        
+        if (!res.ok) {
+          throw new Error('解析失败');
+        }
+        
+        const data = await res.json();
+        const task = data.task;
+        const parsed = data.parsed;
+        
+        parseResult.innerHTML = `
+          <div class="parse-result success">
+            <div style="color:#22c55e;font-weight:600;">✅ 任务已创建</div>
+            <div style="margin-top:0.25rem;">
+              <strong>标题:</strong> ${escapeHtml(task.title)}<br>
+              <strong>优先级:</strong> ${getPriorityLabel(task.priority)}<br>
+              ${task.tags?.length > 0 ? `<strong>标签:</strong> ${task.tags.join(', ')}` : ''}
+            </div>
+          </div>
+        `;
+        
+        input.value = '';
+        loadData();
+      } catch (e) {
+        parseResult.innerHTML = `<div class="parse-result error">❌ 解析失败: ${e.message}</div>`;
+      }
     }
 
     async function completeTask(id) {

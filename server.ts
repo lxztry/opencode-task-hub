@@ -83,11 +83,23 @@ app.get('/api/processes', (req, res) => {
 
 app.post('/api/processes/:pid/focus', (req, res) => {
   const pid = parseInt(req.params.pid);
-  exec(`powershell -Command "(Get-Process -Id ${pid}).MainWindowHandle | ForEach-Object { if ($_) { Set-ForegroundWindow $_ } }"`, (err, stdout, stderr) => {
-    if (err) {
-      res.json({ success: false, error: stderr || err.message });
+  const checkProcess = `powershell -Command "Get-Process -Id ${pid} -ErrorAction SilentlyContinue | Select-Object -ExpandProperty MainWindowHandle"`;
+  
+  exec(checkProcess, (err, stdout) => {
+    const handle = parseInt(stdout.trim());
+    
+    if (handle && handle > 0) {
+      exec(`powershell -Command "Set-ForegroundWindow ${handle}"`, (err2) => {
+        if (err2) {
+          res.json({ success: false, error: err2.message });
+        } else {
+          res.json({ success: true, pid });
+        }
+      });
     } else {
-      res.json({ success: true, pid });
+      exec(`powershell -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c echo. &' ; Get-Process -Id ${pid} | ForEach-Object { $_.MainWindowTitle }"`, (err3, stdout3) => {
+        res.json({ success: false, error: '无法聚焦窗口，请手动查看', details: stdout3 || err3?.message });
+      });
     }
   });
 });
@@ -214,6 +226,202 @@ app.delete('/api/tasks/:id', authenticate, (req, res) => {
   tasks.splice(idx, 1);
   res.status(204).send();
 });
+
+// ============== Session Health Calculator ==============
+
+interface SessionHealth {
+  sessionId: string;
+  health: number;           // 0-100
+  progress: number;          // 0-100%
+  velocity: number;         // tokens/min
+  blockers: number;         // 阻塞任务数
+  type: 'sprint' | 'feature' | 'bug' | 'explore';
+  priority: 'low' | 'medium' | 'high' | 'critical';
+  duration: number;         // ms
+  lastMeaningfulAction: number;
+  summary: string;          // 3句话摘要
+}
+
+function calculateSessionHealth(session: any, sessionTasks: any[]): SessionHealth {
+  const now = Date.now();
+  const createdAt = new Date(session.createdAt).getTime();
+  const duration = now - createdAt;
+  
+  // 基本分数
+  let health = 50;
+  
+  // 进度加分：已完成任务 / 总任务
+  const completedTasks = sessionTasks.filter(t => t.status === 'completed').length;
+  const totalTasks = sessionTasks.length;
+  const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+  health += progress * 0.2;
+  
+  // 无阻塞加分
+  const blockerTasks = sessionTasks.filter(t => 
+    t.status !== 'completed' && 
+    (t.blockers?.length > 0 || t.description?.includes('阻塞') || t.description?.includes('blocker'))
+  ).length;
+  health += blockerTasks === 0 ? 20 : Math.max(0, 20 - blockerTasks * 5);
+  
+  // 活跃度加分（30分钟内有过活动）
+  const lastActivity = session.lastHeartbeat ? new Date(session.lastHeartbeat).getTime() : createdAt;
+  const inactiveTime = now - lastActivity;
+  if (inactiveTime < 30 * 60 * 1000) {
+    health += 10;
+  } else if (inactiveTime > 2 * 60 * 60 * 1000) {
+    health -= 10;
+  }
+  
+  // Token 速率计算
+  const tokenUsage = session.tokenUsage || {};
+  const totalTokens = tokenUsage.totalTokens || 0;
+  const durationMin = duration / 60000;
+  const velocity = durationMin > 0 ? Math.round(totalTokens / durationMin) : 0;
+  
+  // 类型识别（基于名称/描述）
+  let type: SessionHealth['type'] = 'feature';
+  const nameLower = (session.projectName || '').toLowerCase();
+  const descLower = (session.description || '').toLowerCase();
+  if (nameLower.includes('bug') || descLower.includes('bug') || nameLower.includes('修复')) {
+    type = 'bug';
+  } else if (nameLower.includes('sprint') || nameLower.includes('迭代')) {
+    type = 'sprint';
+  } else if (nameLower.includes('explore') || nameLower.includes('探索') || nameLower.includes('research')) {
+    type = 'explore';
+  }
+  
+  // 优先级（基于活跃度和进度）
+  let priority: SessionHealth['priority'] = 'medium';
+  if (health < 40) priority = 'critical';
+  else if (health < 60) priority = 'high';
+  else if (health > 80 && progress > 50) priority = 'low';
+  
+  // 生成3句话摘要
+  const summary = generateSessionSummary(session, sessionTasks, progress, completedTasks, totalTasks, blockerTasks, velocity);
+  
+  return {
+    sessionId: session.id,
+    health: Math.min(100, Math.max(0, Math.round(health))),
+    progress,
+    velocity,
+    blockers: blockerTasks,
+    type,
+    priority,
+    duration,
+    lastMeaningfulAction: lastActivity,
+    summary
+  };
+}
+
+function generateSessionSummary(session: any, tasks: any[], progress: number, completed: number, total: number, blockers: number, velocity: number): string {
+  const sentences: string[] = [];
+  
+  // 第一句：当前状态
+  const inProgressTasks = tasks.filter(t => t.status === 'in_progress');
+  if (inProgressTasks.length > 0) {
+    sentences.push(`正在进行「${inProgressTasks[0].title || '未知任务'}」`);
+  } else if (completed > 0) {
+    sentences.push(`已完成 ${completed}/${total} 个任务`);
+  } else {
+    sentences.push(`会话已创建，等待开始`);
+  }
+  
+  // 第二句：阻塞/风险
+  if (blockers > 0) {
+    sentences.push(`遇到 ${blockers} 个阻塞项`);
+  } else if (velocity > 5000) {
+    sentences.push(`Token消耗速率较快 (${velocity}/min)`);
+  } else {
+    sentences.push(`进度正常`);
+  }
+  
+  // 第三句：建议
+  if (blockers > 0) {
+    sentences.push(`建议优先解决阻塞问题`);
+  } else if (progress > 80) {
+    sentences.push(`即将完成，可考虑收尾`);
+  } else if (progress < 20 && tasks.length > 5) {
+    sentences.push(`任务较多，建议拆解`);
+  } else {
+    sentences.push(`继续推进当前任务`);
+  }
+  
+  return sentences.join('。') + '。';
+}
+
+// ============== Natural Language Task Parser ==============
+
+interface ParsedTask {
+  title: string;
+  description?: string;
+  priority?: 'low' | 'medium' | 'high' | 'critical';
+  tags?: string[];
+  type?: 'feature' | 'bug' | 'refactor' | 'docs';
+}
+
+function parseNaturalLanguageToTask(text: string): ParsedTask | null {
+  const trimmed = text.trim();
+  if (trimmed.length < 3) return null;
+  
+  const result: ParsedTask = {
+    title: trimmed,
+    tags: []
+  };
+  
+  // 优先级识别
+  const priorityPatterns = [
+    { pattern: /紧急|urgent|critical|immediate/i, priority: 'critical' as const },
+    { pattern: /重要|important|high/i, priority: 'high' as const },
+    { pattern: /低|low|次要|minor/i, priority: 'low' as const },
+    { pattern: /一般|普通|normal|medium/i, priority: 'medium' as const }
+  ];
+  
+  for (const { pattern, priority } of priorityPatterns) {
+    if (pattern.test(trimmed)) {
+      result.priority = priority;
+      break;
+    }
+  }
+  
+  // 类型识别
+  const typePatterns = [
+    { pattern: /bug|缺陷|错误|修复/i, type: 'bug' as const },
+    { pattern: /重构|refactor|优化/i, type: 'refactor' as const },
+    { pattern: /文档|docs?|说明|readme/i, type: 'docs' as const },
+    { pattern: /功能|feature|新增|创建|实现/i, type: 'feature' as const }
+  ];
+  
+  for (const { pattern, type } of typePatterns) {
+    if (pattern.test(trimmed)) {
+      result.type = type;
+      result.tags?.push(type);
+      break;
+    }
+  }
+  
+  // 从"创建XXX功能"提取标题
+  const createMatch = trimmed.match(/创建(?:一个)?(?:新的)?(?:功能|module|组件)?[:：]?\s*(.+)/i);
+  if (createMatch) {
+    result.title = createMatch[1].trim();
+    result.tags?.push('feature');
+  }
+  
+  // 从"完成XXX"提取标题
+  const completeMatch = trimmed.match(/完成(?:了)?(?::|：)?\s*(.+)/i);
+  if (completeMatch) {
+    result.title = `完成 ${completeMatch[1].trim()}`;
+  }
+  
+  // 从"修复XXX bug"提取标题
+  const fixMatch = trimmed.match(/修复(?:一个)?(?:bug)?[:：]?\s*(.+)/i);
+  if (fixMatch) {
+    result.title = `修复 ${fixMatch[1].trim()}`;
+    result.tags = ['bug', 'fix'];
+    result.priority = result.priority || 'high';
+  }
+  
+  return result;
+}
 
 // ============== Cognitive Load APIs (Phase 1-3) ==============
 
@@ -552,6 +760,252 @@ app.post('/api/cognitive/decisions/confirm/:logId', (req, res) => {
 
 app.get('/api/cognitive/decisions/pending', (req, res) => {
   res.json({ pending: cognitiveData.decisions.logs.filter(l => !l.resolvedAt) });
+});
+
+// ============== Session Health APIs ==============
+
+app.get('/api/sessions/health', (req, res) => {
+  const results: SessionHealth[] = [];
+  for (const session of sessions) {
+    const sessionTasks = tasks.filter(t => 
+      t.sessionId === session.id || 
+      t.projectKey === session.projectKey
+    );
+    results.push(calculateSessionHealth(session, sessionTasks));
+  }
+  res.json({ sessions: results });
+});
+
+app.get('/api/sessions/health/:sessionId', (req, res) => {
+  const session = sessions.find(s => s.id === req.params.sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+  const sessionTasks = tasks.filter(t => 
+    t.sessionId === session.id || 
+    t.projectKey === session.projectKey
+  );
+  const health = calculateSessionHealth(session, sessionTasks);
+  res.json(health);
+});
+
+// ============== Session Summary APIs (3-sentence) ==============
+
+app.get('/api/sessions/summary', (req, res) => {
+  const summaries: Record<string, string> = {};
+  for (const session of sessions) {
+    const sessionTasks = tasks.filter(t => 
+      t.sessionId === session.id || 
+      t.projectKey === session.projectKey
+    );
+    const health = calculateSessionHealth(session, sessionTasks);
+    summaries[session.id] = health.summary;
+  }
+  res.json({ summaries });
+});
+
+app.get('/api/sessions/summary/:sessionId', (req, res) => {
+  const session = sessions.find(s => s.id === req.params.sessionId);
+  if (!session) {
+    return res.status(404).json({ error: 'Session not found' });
+  }
+  const sessionTasks = tasks.filter(t => 
+    t.sessionId === session.id || 
+    t.projectKey === session.projectKey
+  );
+  const health = calculateSessionHealth(session, sessionTasks);
+  res.json({ summary: health.summary, health });
+});
+
+// ============== Task Auto-Extraction APIs ==============
+
+app.post('/api/tasks/parse', (req, res) => {
+  const { text, sessionId, projectKey } = req.body;
+  if (!text) {
+    return res.status(400).json({ error: 'Text is required' });
+  }
+  
+  const parsed = parseNaturalLanguageToTask(text);
+  if (!parsed) {
+    return res.status(400).json({ error: 'Could not parse text into task' });
+  }
+  
+  // 查找关联的session
+  let linkedSessionId = sessionId;
+  let linkedProjectKey = projectKey;
+  
+  if (!linkedSessionId && projectKey) {
+    const session = sessions.find(s => s.projectKey === projectKey);
+    if (session) {
+      linkedSessionId = session.id;
+      linkedProjectKey = session.projectKey;
+    }
+  }
+  
+  // 创建任务
+  const task = {
+    id: uuidv4(),
+    title: parsed.title,
+    description: parsed.description || '',
+    status: 'pending',
+    priority: parsed.priority || 'medium',
+    tags: parsed.tags || [],
+    type: parsed.type,
+    sessionId: linkedSessionId,
+    projectKey: linkedProjectKey,
+    createdAt: Date.now(),
+    updatedAt: Date.now()
+  };
+  
+  tasks.push(task);
+  
+  // 如果有关联的session，更新session的tasks
+  if (linkedSessionId) {
+    const session = sessions.find(s => s.id === linkedSessionId);
+    if (session) {
+      if (!session.context) session.context = {};
+      if (!session.context.tasks) session.context.tasks = [];
+      session.context.tasks.push(task.id);
+      saveData();
+      broadcast({ type: 'task:created', task, session });
+    }
+  }
+  
+  res.status(201).json({ task, parsed });
+});
+
+app.post('/api/tasks/extract-from-message', (req, res) => {
+  // 从OpenCode消息中自动提取任务
+  const { messages, sessionId, projectKey } = req.body;
+  
+  if (!messages || !Array.isArray(messages)) {
+    return res.status(400).json({ error: 'Messages array is required' });
+  }
+  
+  const extractedTasks: any[] = [];
+  
+  for (const msg of messages) {
+    const content = typeof msg === 'string' ? msg : msg.content;
+    if (!content) continue;
+    
+    // 检测任务创建意图
+    const createPatterns = [
+      /创建(?:一个)?(?:新的)?(?:功能|module|组件)?[:：]?\s*(.+)/i,
+      /添加(?:一个)?(?:新的)?(?:功能)?[:：]?\s*(.+)/i,
+      /实现(?:一个)?(?:新的)?(?:功能)?[:：]?\s*(.+)/i,
+      /修复(?:一个)?(?:bug)?[:：]?\s*(.+)/i,
+      /todo[:：]?\s*(.+)/i,
+      /任务[:：]?\s*(.+)/i
+    ];
+    
+    for (const pattern of createPatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        const parsed = parseNaturalLanguageToTask(match[0]);
+        if (parsed) {
+          const task = {
+            id: uuidv4(),
+            title: parsed.title,
+            description: `从对话自动提取: ${content.substring(0, 200)}`,
+            status: 'pending',
+            priority: parsed.priority || 'medium',
+            tags: ['auto-extracted', ...(parsed.tags || [])],
+            type: parsed.type,
+            sessionId,
+            projectKey,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+            autoExtracted: true
+          };
+          tasks.push(task);
+          extractedTasks.push(task);
+        }
+        break;
+      }
+    }
+    
+    // 检测任务完成意图
+    const completePatterns = [
+      /(?:完成|搞定|结束了)(?:了)?(?::|：)?\s*(.+)/i,
+      /(?:已经)?(?:完成|搞定)[:：]?\s*(.+)/i
+    ];
+    
+    for (const pattern of completePatterns) {
+      const match = content.match(pattern);
+      if (match) {
+        const titleToFind = match[1].trim();
+        const taskToComplete = tasks.find(t => 
+          (t.sessionId === sessionId || t.projectKey === projectKey) &&
+          t.status !== 'completed' &&
+          t.title.includes(titleToFind)
+        );
+        if (taskToComplete) {
+          taskToComplete.status = 'completed';
+          taskToComplete.completedAt = Date.now();
+          taskToComplete.updatedAt = Date.now();
+          extractedTasks.push({ ...taskToComplete, _action: 'completed' });
+        }
+        break;
+      }
+    }
+  }
+  
+  res.json({ extracted: extractedTasks.length, tasks: extractedTasks });
+});
+
+// ============== View Mode APIs ==============
+
+app.get('/api/sessions/views', (req, res) => {
+  const { mode } = req.query;
+  
+  if (mode === 'health') {
+    // 按健康度排序
+    const withHealth = sessions.map(session => {
+      const sessionTasks = tasks.filter(t => 
+        t.sessionId === session.id || 
+        t.projectKey === session.projectKey
+      );
+      return {
+        ...session,
+        health: calculateSessionHealth(session, sessionTasks)
+      };
+    }).sort((a, b) => a.health.health - b.health.health);
+    
+    return res.json({ sessions: withHealth, mode: 'health' });
+  }
+  
+  if (mode === 'recent') {
+    // 按最近活动时间排序
+    const sorted = [...sessions].sort((a, b) => 
+      new Date(b.lastHeartbeat).getTime() - new Date(a.lastHeartbeat).getTime()
+    );
+    return res.json({ sessions: sorted, mode: 'recent' });
+  }
+  
+  if (mode === 'priority') {
+    // 按优先级排序
+    const withHealth = sessions.map(session => {
+      const sessionTasks = tasks.filter(t => 
+        t.sessionId === session.id || 
+        t.projectKey === session.projectKey
+      );
+      return {
+        ...session,
+        health: calculateSessionHealth(session, sessionTasks)
+      };
+    }).sort((a, b) => {
+      const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+      return priorityOrder[a.health.priority] - priorityOrder[b.health.priority];
+    });
+    
+    return res.json({ sessions: withHealth, mode: 'priority' });
+  }
+  
+  // 默认：按创建时间排序
+  const sorted = [...sessions].sort((a, b) => 
+    new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+  );
+  res.json({ sessions: sorted, mode: 'default' });
 });
 
 // ============== WebSocket ==============
