@@ -73,6 +73,42 @@
     .parse-result { font-size: 0.7rem; padding: 0.5rem; background: #1e293b; border-radius: 4px; margin-top: 0.5rem; }
     .parse-result.success { border-left: 3px solid #22c55e; }
     .parse-result.error { border-left: 3px solid #ef4444; }
+    
+    /* Long-Running Tasks */
+    .longtask-section { background: #1e293b; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; max-height: calc(100vh - 200px); overflow: hidden; }
+    .longtask-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #334155; flex-shrink: 0; }
+    .longtask-title { font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .longtask-content { flex: 1; overflow-y: auto; }
+    .longtask-item { background: #0f172a; border-radius: 8px; padding: 1rem; margin-bottom: 0.75rem; cursor: pointer; transition: all 0.2s; border-left: 4px solid; }
+    .longtask-item:hover { transform: translateX(4px); }
+    .longtask-item.running { border-left-color: #22c55e; }
+    .longtask-item.paused { border-left-color: #f59e0b; }
+    .longtask-item.completed { border-left-color: #3b82f6; }
+    .longtask-item.planning { border-left-color: #a855f7; }
+    .longtask-item-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.5rem; }
+    .longtask-item-title { font-weight: 600; font-size: 0.9rem; }
+    .longtask-status-badge { padding: 0.125rem 0.5rem; border-radius: 4px; font-size: 0.7rem; font-weight: 600; }
+    .longtask-status-badge.running { background: #22c55e30; color: #22c55e; }
+    .longtask-status-badge.paused { background: #f59e0b30; color: #f59e0b; }
+    .longtask-status-badge.completed { background: #3b82f630; color: #3b82f6; }
+    .longtask-status-badge.planning { background: #a855f730; color: #a855f7; }
+    .longtask-status-badge.pending { background: #64748b30; color: #64748b; }
+    .longtask-progress-bar { height: 6px; background: #334155; border-radius: 3px; overflow: hidden; margin: 0.5rem 0; }
+    .longtask-progress-fill { height: 100%; border-radius: 3px; transition: width 0.3s; background: linear-gradient(90deg, #22c55e, #16a34a); }
+    .longtask-stats { display: flex; gap: 1rem; font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem; }
+    .longtask-step { padding: 0.5rem; background: #1e293b; border-radius: 6px; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .longtask-step.in_progress { background: #22c55e20; border: 1px solid #22c55e40; }
+    .longtask-step.completed { opacity: 0.6; }
+    .longtask-step-icon { font-size: 0.8rem; }
+    .longtask-step-name { flex: 1; font-size: 0.8rem; }
+    .longtask-step-time { font-size: 0.7rem; color: #64748b; }
+    .longtask-actions { display: flex; gap: 0.25rem; margin-top: 0.5rem; }
+    .longtask-create-form { background: #0f172a; border-radius: 8px; padding: 1rem; margin-bottom: 1rem; }
+    .longtask-create-form input, .longtask-create-form textarea { width: 100%; padding: 0.5rem; border: 1px solid #334155; border-radius: 4px; background: #1e293b; color: #e2e8f0; font-size: 0.8rem; margin-bottom: 0.5rem; }
+    .longtask-create-form input:focus, .longtask-create-form textarea:focus { outline: none; border-color: #3b82f6; }
+    .longtask-create-form label { font-size: 0.75rem; color: #94a3b8; display: flex; align-items: center; gap: 0.5rem; margin-bottom: 0.5rem; }
+    .longtask-checkbox { width: 16px; height: 16px; }
+    
     .session-card { background: #0f172a; border-radius: 8px; padding: 1rem; display: flex; gap: 1rem; align-items: flex-start; }
     .session-icon { font-size: 1.5rem; }
     .session-info { flex: 1; min-width: 0; }
@@ -289,7 +325,40 @@
       </div>
     </div>
 
-    <div class="main-grid" style="grid-template-columns: 1fr 1fr">
+    <div class="main-grid" style="grid-template-columns: 1fr 1fr 1fr 1fr;">
+      
+      <!-- Long-Running Tasks Panel -->
+      <div class="longtask-section">
+        <div class="longtask-header">
+          <div class="longtask-title">
+            🏃 长跑任务
+            <span class="badge" id="longTaskCount">0</span>
+          </div>
+          <button class="btn btn-primary" onclick="showLongTaskCreate()" style="padding:0.25rem 0.5rem;">+ 新建</button>
+        </div>
+        
+        <div class="longtask-create-form" id="longTaskCreateForm" style="display:none;">
+          <input type="text" id="longTaskTitle" placeholder="任务标题">
+          <textarea id="longTaskDesc" placeholder="任务描述（可选）" rows="2"></textarea>
+          <label>
+            <input type="checkbox" class="longtask-checkbox" id="longTaskAutoExpand" checked>
+            自动拆解子任务
+          </label>
+          <label>
+            <input type="checkbox" class="longtask-checkbox" id="longTaskSelfPlanning" checked>
+            启用自我规划
+          </label>
+          <div style="display:flex;gap:0.25rem;">
+            <button class="btn btn-success" onclick="createLongTask()">创建</button>
+            <button class="btn" onclick="hideLongTaskCreate()" style="background:#64748b;color:white;">取消</button>
+          </div>
+        </div>
+        
+        <div class="longtask-content" id="longTaskContent">
+          <div class="cognitive-empty">加载中...</div>
+        </div>
+      </div>
+      
       <div class="section">
         <div class="section-header">
           <div class="section-title">
@@ -1199,8 +1268,180 @@
       content.innerHTML = html;
     }
 
+    // ============== Long-Running Tasks ==============
+    let longTasks = [];
+
+    function showLongTaskCreate() {
+      document.getElementById('longTaskCreateForm').style.display = 'block';
+    }
+
+    function hideLongTaskCreate() {
+      document.getElementById('longTaskCreateForm').style.display = 'none';
+      document.getElementById('longTaskTitle').value = '';
+      document.getElementById('longTaskDesc').value = '';
+    }
+
+    async function createLongTask() {
+      const title = document.getElementById('longTaskTitle').value.trim();
+      const description = document.getElementById('longTaskDesc').value.trim();
+      const autoExpand = document.getElementById('longTaskAutoExpand').checked;
+      const selfPlanning = document.getElementById('longTaskSelfPlanning').checked;
+      
+      if (!title) {
+        alert('请输入任务标题');
+        return;
+      }
+      
+      try {
+        const res = await fetch('/api/long-tasks', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ title, description, autoExpand, selfPlanning })
+        });
+        
+        if (!res.ok) throw new Error('创建失败');
+        
+        hideLongTaskCreate();
+        loadLongTasks();
+      } catch (e) {
+        alert('创建失败: ' + e.message);
+      }
+    }
+
+    async function loadLongTasks() {
+      try {
+        const res = await fetch('/api/long-tasks');
+        const data = await res.json();
+        longTasks = data.tasks || [];
+        document.getElementById('longTaskCount').textContent = longTasks.length;
+        renderLongTasks();
+      } catch (e) {
+        console.error('Failed to load long tasks:', e);
+        document.getElementById('longTaskContent').innerHTML = '<div class="cognitive-empty">加载失败</div>';
+      }
+    }
+
+    function renderLongTasks() {
+      const container = document.getElementById('longTaskContent');
+      
+      if (longTasks.length === 0) {
+        container.innerHTML = '<div class="cognitive-empty">暂无长跑任务<br><span style="font-size:0.7rem">点击"新建"创建一个</span></div>';
+        return;
+      }
+      
+      container.innerHTML = longTasks.map(task => {
+        const statusClass = task.status;
+        const statusLabel = {
+          planning: '规划中', running: '进行中', paused: '已暂停', 
+          completed: '已完成', pending: '待开始', failed: '失败'
+        }[task.status] || task.status;
+        
+        const currentStep = task.plan?.steps?.find(s => s.status === 'in_progress');
+        const estimated = task.estimatedHours || 0;
+        const actual = task.actualHours || 0;
+        
+        return `
+          <div class="longtask-item ${statusClass}" onclick="toggleLongTaskDetail('${task.id}')">
+            <div class="longtask-item-header">
+              <span class="longtask-item-title">${escapeHtml(task.title)}</span>
+              <span class="longtask-status-badge ${statusClass}">${statusLabel}</span>
+            </div>
+            <div class="longtask-progress-bar">
+              <div class="longtask-progress-fill" style="width:${task.progress}%"></div>
+            </div>
+            <div class="longtask-stats">
+              <span>📊 ${task.progress}%</span>
+              <span>⏱️ ${actual}h / ${estimated}h</span>
+              <span>📋 ${task.plan?.totalSteps || 0}步</span>
+            </div>
+            ${currentStep ? `<div style="font-size:0.7rem;color:#22c55e;margin-top:0.25rem;">▶ ${escapeHtml(currentStep.name)}</div>` : ''}
+            <div class="longtask-actions" onclick="event.stopPropagation()">
+              ${task.status === 'pending' || task.status === 'planning' ? 
+                `<button class="btn btn-success btn-small" onclick="startLongTask('${task.id}')">▶ 开始</button>` : ''}
+              ${task.status === 'running' ? 
+                `<button class="btn btn-small" onclick="pauseLongTask('${task.id}')" style="background:#f59e0b;color:white;">⏸ 暂停</button>` : ''}
+              ${task.status === 'paused' ? 
+                `<button class="btn btn-success btn-small" onclick="resumeLongTask('${task.id}')">▶ 继续</button>` : ''}
+              ${task.status === 'running' || task.status === 'paused' ? 
+                `<button class="btn btn-small" onclick="addCheckpoint('${task.id}')">💾 检查点</button>` : ''}
+            </div>
+            <div id="longtask-detail-${task.id}" style="display:none;margin-top:0.75rem;padding-top:0.75rem;border-top:1px solid #334155;">
+              ${task.description ? `<div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">${escapeHtml(task.description)}</div>` : ''}
+              <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.5rem;">执行计划:</div>
+              ${(task.plan?.steps || []).map(step => `
+                <div class="longtask-step ${step.status}">
+                  <span class="longtask-step-icon">${step.status === 'completed' ? '✅' : step.status === 'in_progress' ? '🔄' : step.status === 'skipped' ? '⏭' : '⏳'}</span>
+                  <span class="longtask-step-name">${escapeHtml(step.name)}</span>
+                  <span class="longtask-step-time">${Math.round(step.estimatedMinutes)}min</span>
+                  ${step.status === 'in_progress' ? `<button class="btn btn-small" onclick="completeStep('${task.id}', '${step.id}')" style="background:#22c55e;color:white;padding:0.125rem 0.25rem;font-size:0.65rem;">完成</button>` : ''}
+                </div>
+              `).join('')}
+              ${task.checkpoints?.length > 0 ? `
+                <div style="font-size:0.7rem;color:#64748b;margin:0.5rem 0 0.25rem;">检查点:</div>
+                ${task.checkpoints.map(cp => `
+                  <div style="font-size:0.7rem;color:#94a3b8;padding:0.25rem 0;">
+                    💾 ${cp.name} - ${formatTime(cp.timestamp)} 
+                    <button class="btn btn-small" onclick="restoreCheckpoint('${task.id}', '${cp.id}')" style="padding:0.0625rem 0.25rem;font-size:0.6rem;">恢复</button>
+                  </div>
+                `).join('')}
+              ` : ''}
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleLongTaskDetail(taskId) {
+      const detail = document.getElementById(`longtask-detail-${taskId}`);
+      if (detail) {
+        detail.style.display = detail.style.display === 'none' ? 'block' : 'none';
+      }
+    }
+
+    async function startLongTask(taskId) {
+      await fetch(`/api/long-tasks/${taskId}/start`, { method: 'POST' });
+      loadLongTasks();
+    }
+
+    async function pauseLongTask(taskId) {
+      await fetch(`/api/long-tasks/${taskId}/pause`, { method: 'POST' });
+      loadLongTasks();
+    }
+
+    async function resumeLongTask(taskId) {
+      await fetch(`/api/long-tasks/${taskId}/resume`, { method: 'POST' });
+      loadLongTasks();
+    }
+
+    async function addCheckpoint(taskId) {
+      const name = prompt('检查点名称:');
+      if (!name) return;
+      await fetch(`/api/long-tasks/${taskId}/checkpoint`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name })
+      });
+      loadLongTasks();
+    }
+
+    async function completeStep(taskId, stepId) {
+      await fetch(`/api/long-tasks/${taskId}/complete-step`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ stepId })
+      });
+      loadLongTasks();
+    }
+
+    async function restoreCheckpoint(taskId, checkpointId) {
+      if (!confirm('确定恢复到该检查点？')) return;
+      await fetch(`/api/long-tasks/${taskId}/restore/${checkpointId}`, { method: 'POST' });
+      loadLongTasks();
+    }
+
     // 初始化时自动测试 API
     setTimeout(testCognitiveAPI, 1000);
+    loadLongTasks();
   </script>
 </body>
 </html>
