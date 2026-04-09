@@ -1,567 +1,1206 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>OpenCode Task Hub - AI 任务管理中枢 (v2.0)</title>
-    <style>
-        * { margin: 0; padding: 0; box-sizing: border-box; }
-        
-        :root {
-            --primary: #6366f1;
-            --primary-dark: #4f46e5;
-            --secondary: #10b981;
-            --bg: #0f172a;
-            --card-bg: #1e293b;
-            --text: #f1f5f9;
-            --text-muted: #94a3b8;
-        }
-        
-        body {
-            font-family: 'Segoe UI', system-ui, sans-serif;
-            background: var(--bg);
-            color: var(--text);
-            min-height: 100vh;
-            line-height: 1.6;
-        }
-        
-        .container {
-            max-width: 1200px;
-            margin: 0 auto;
-            padding: 0 2rem;
-        }
-        
-        /* Hero */
-        .hero {
-            padding: 6rem 0;
-            text-align: center;
-            background: linear-gradient(180deg, rgba(99,102,241,0.1) 0%, transparent 100%);
-        }
-        
-        .hero h1 {
-            font-size: 3.5rem;
-            font-weight: 800;
-            margin-bottom: 1rem;
-            background: linear-gradient(135deg, var(--primary), var(--secondary));
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-        }
-        
-        .hero p {
-            font-size: 1.25rem;
-            color: var(--text-muted);
-            max-width: 600px;
-            margin: 0 auto 2rem;
-        }
-        
-        .badge {
-            display: inline-block;
-            padding: 0.5rem 1rem;
-            background: rgba(99,102,241,0.2);
-            border: 1px solid var(--primary);
-            border-radius: 2rem;
-            font-size: 0.875rem;
-            color: var(--primary);
-            margin-bottom: 1.5rem;
-        }
-        
-        /* CTA Buttons */
-        .cta-group {
-            display: flex;
-            gap: 1rem;
-            justify-content: center;
-            flex-wrap: wrap;
-        }
-        
-        .btn {
-            padding: 0.875rem 2rem;
-            border-radius: 0.5rem;
-            font-weight: 600;
-            text-decoration: none;
-            transition: all 0.2s;
-            display: inline-flex;
-            align-items: center;
-            gap: 0.5rem;
-        }
-        
-        .btn-primary {
-            background: var(--primary);
-            color: white;
-        }
-        
-        .btn-primary:hover {
-            background: var(--primary-dark);
-            transform: translateY(-2px);
-        }
-        
-        .btn-secondary {
-            background: var(--card-bg);
-            color: var(--text);
-            border: 1px solid #334155;
-        }
-        
-        .btn-secondary:hover {
-            border-color: var(--primary);
-        }
-        
-        /* Features */
-        .features {
-            padding: 5rem 0;
-        }
-        
-        .section-title {
-            text-align: center;
-            font-size: 2rem;
-            margin-bottom: 3rem;
-        }
-        
-        .features-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
-            gap: 1.5rem;
-        }
-        
-        .feature-card {
-            background: var(--card-bg);
-            padding: 2rem;
-            border-radius: 1rem;
-            border: 1px solid #334155;
-            transition: all 0.3s;
-        }
-        
-        .feature-card:hover {
-            border-color: var(--primary);
-            transform: translateY(-4px);
-        }
-        
-        .feature-icon {
-            width: 48px;
-            height: 48px;
-            background: rgba(99,102,241,0.2);
-            border-radius: 0.75rem;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.5rem;
-            margin-bottom: 1rem;
-        }
-        
-        .feature-card h3 {
-            font-size: 1.25rem;
-            margin-bottom: 0.75rem;
-        }
-        
-        .feature-card p {
-            color: var(--text-muted);
-            font-size: 0.95rem;
-        }
-        
-        /* Architecture */
-        .architecture {
-            padding: 5rem 0;
-            background: rgba(30,41,59,0.5);
-        }
-        
-        .arch-diagram {
-            background: var(--card-bg);
-            border-radius: 1rem;
-            padding: 2rem;
-            margin-top: 2rem;
-            font-family: 'Consolas', monospace;
-            overflow-x: auto;
-        }
-        
-        .arch-diagram pre {
-            color: #a5f3fc;
-        }
-        
-        /* API */
-        .api-section {
-            padding: 5rem 0;
-        }
-        
-        .api-grid {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1rem;
-        }
-        
-        .api-endpoint {
-            background: var(--card-bg);
-            padding: 1rem 1.5rem;
-            border-radius: 0.5rem;
-            display: flex;
-            align-items: center;
-            gap: 1rem;
-        }
-        
-        .method {
-            padding: 0.25rem 0.75rem;
-            border-radius: 0.25rem;
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-        }
-        
-        .method-get { background: #059669; color: white; }
-        .method-post { background: #2563eb; color: white; }
-        
-        .endpoint-path {
-            font-family: monospace;
-            color: var(--text-muted);
-            font-size: 0.9rem;
-        }
-        
-        /* Footer */
-        footer {
-            padding: 3rem 0;
-            text-align: center;
-            color: var(--text-muted);
-            border-top: 1px solid #334155;
-        }
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>OpenCode Task Hub</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+    .container { max-width: 1400px; margin: 0 auto; padding: 1.5rem; }
+    header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1.5rem; }
+    h1 { font-size: 1.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .status { display: flex; align-items: center; gap: 0.5rem; font-size: 0.875rem; }
+    .status-dot { width: 8px; height: 8px; border-radius: 50%; background: #22c55e; }
+    .status-dot.offline { background: #ef4444; }
+    .main-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+    .section { background: #1e293b; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; }
+    .section-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #334155; flex-shrink: 0; }
+    .section-title { font-size: 1rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .badge { background: #334155; padding: 0.125rem 0.5rem; border-radius: 10px; font-size: 0.75rem; }
+    .sessions-list, .tasks-container { flex: 1; overflow-y: auto; }
+    .sessions-list { display: flex; flex-direction: column; gap: 0.75rem; max-height: calc(100vh - 280px); }
+    
+    /* View Switcher */
+    .view-switcher { display: flex; gap: 0.25rem; background: #0f172a; border-radius: 6px; padding: 0.125rem; }
+    .view-btn { padding: 0.25rem 0.5rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.7rem; background: transparent; color: #64748b; transition: all 0.2s; }
+    .view-btn:hover { color: #94a3b8; }
+    .view-btn.active { background: #3b82f6; color: white; }
+    
+    /* Session Card - Grid View */
+    .sessions-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 0.75rem; }
+    .session-card-grid { background: #0f172a; border-radius: 8px; padding: 1rem; cursor: pointer; transition: all 0.2s; border: 1px solid transparent; }
+    .session-card-grid:hover { border-color: #3b82f6; transform: translateY(-2px); }
+    .session-card-grid .card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 0.75rem; }
+    .session-card-grid .card-title { font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .session-card-grid .card-path { font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-card-grid .health-bar { height: 4px; background: #334155; border-radius: 2px; overflow: hidden; margin: 0.5rem 0; }
+    .session-card-grid .health-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .session-card-grid .health-fill.high { background: #22c55e; }
+    .session-card-grid .health-fill.medium { background: #f59e0b; }
+    .session-card-grid .health-fill.low { background: #ef4444; }
+    .session-card-grid .card-stats { display: flex; gap: 1rem; font-size: 0.7rem; color: #94a3b8; margin-top: 0.5rem; }
+    .session-card-grid .stat-item { display: flex; align-items: center; gap: 0.25rem; }
+    .session-card-grid .card-summary { font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem; padding: 0.5rem; background: #1e293b; border-radius: 6px; line-height: 1.4; }
+    .session-card-grid .priority-badge { padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.65rem; font-weight: 600; }
+    .session-card-grid .priority-badge.critical { background: #ef444430; color: #ef4444; }
+    .session-card-grid .priority-badge.high { background: #f59e0b30; color: #f59e0b; }
+    .session-card-grid .priority-badge.medium { background: #3b82f630; color: #3b82f6; }
+    .session-card-grid .priority-badge.low { background: #22c55e30; color: #22c55e; }
+    .session-card-grid .type-badge { background: #334155; padding: 0.125rem 0.375rem; border-radius: 4px; font-size: 0.65rem; }
+    .session-card-grid .blocker-warning { color: #ef4444; font-size: 0.7rem; display: flex; align-items: center; gap: 0.25rem; }
+    
+    /* Session Card - Compact View */
+    .sessions-compact { display: flex; flex-direction: column; gap: 0.5rem; }
+    .session-card-compact { background: #0f172a; border-radius: 6px; padding: 0.5rem 0.75rem; display: flex; align-items: center; gap: 0.75rem; cursor: pointer; transition: background 0.2s; }
+    .session-card-compact:hover { background: #1e293b; }
+    .session-card-compact .compact-health { width: 4px; height: 32px; border-radius: 2px; flex-shrink: 0; }
+    .session-card-compact .compact-name { flex: 1; font-size: 0.8rem; font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-card-compact .compact-stats { font-size: 0.7rem; color: #64748b; display: flex; gap: 0.5rem; }
+    .session-card-compact .compact-progress { font-size: 0.7rem; color: #94a3b8; }
+    
+    /* Sort Controls */
+    .sort-controls { display: flex; gap: 0.5rem; margin-bottom: 0.75rem; }
+    .sort-btn { padding: 0.25rem 0.5rem; border: 1px solid #334155; border-radius: 4px; background: transparent; color: #94a3b8; font-size: 0.7rem; cursor: pointer; transition: all 0.2s; }
+    .sort-btn:hover { border-color: #3b82f6; color: #60a5fa; }
+    .sort-btn.active { background: #3b82f6; border-color: #3b82f6; color: white; }
+    
+    /* Parse Task Input */
+    .parse-section { background: #0f172a; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.75rem; }
+    .parse-section label { font-size: 0.75rem; color: #94a3b8; display: block; margin-bottom: 0.5rem; }
+    .parse-input { width: 100%; padding: 0.5rem; border: 1px solid #334155; border-radius: 4px; background: #1e293b; color: #e2e8f0; font-size: 0.8rem; margin-bottom: 0.5rem; }
+    .parse-input:focus { outline: none; border-color: #3b82f6; }
+    .parse-result { font-size: 0.7rem; padding: 0.5rem; background: #1e293b; border-radius: 4px; margin-top: 0.5rem; }
+    .parse-result.success { border-left: 3px solid #22c55e; }
+    .parse-result.error { border-left: 3px solid #ef4444; }
+    .session-card { background: #0f172a; border-radius: 8px; padding: 1rem; display: flex; gap: 1rem; align-items: flex-start; }
+    .session-icon { font-size: 1.5rem; }
+    .session-info { flex: 1; min-width: 0; }
+    .session-name { font-weight: 600; margin-bottom: 0.25rem; }
+    .session-meta { font-size: 0.75rem; color: #64748b; }
+    .session-activity { font-size: 0.75rem; color: #94a3b8; margin-top: 0.5rem; padding: 0.25rem 0.5rem; background: #1e293b; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .session-status { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; margin-top: 0.25rem; }
+    .session-status.active { background: #22c55e; box-shadow: 0 0 8px #22c55e80; }
+    .session-status.idle { background: #f59e0b; }
+    .session-status.offline { background: #64748b; }
+    .empty { text-align: center; padding: 2rem; color: #64748b; }
+    .empty-icon { font-size: 2rem; margin-bottom: 0.5rem; }
+    .summary { display: grid; grid-template-columns: repeat(7, 1fr); gap: 0.75rem; margin-bottom: 1.5rem; }
+    .summary-card { background: #1e293b; border-radius: 10px; padding: 1rem; text-align: center; }
+    .summary-value { font-size: 1.5rem; font-weight: 600; }
+    .summary-label { font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; }
+    .summary-value.green { color: #22c55e; }
+    .summary-value.blue { color: #3b82f6; }
+    .summary-value.orange { color: #f59e0b; }
+    
+    .session-group { margin-bottom: 1rem; }
+    .session-group:last-child { margin-bottom: 0; }
+    .session-group-header { 
+      display: flex; 
+      align-items: center; 
+      gap: 0.5rem; 
+      padding: 0.75rem 1rem; 
+      background: #0f172a; 
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      user-select: none;
+    }
+    .session-group-header:hover { background: #1e293b; }
+    .session-group-header .toggle { 
+      font-size: 0.75rem; 
+      color: #64748b;
+      transition: transform 0.2s;
+    }
+    .session-group-header .toggle.expanded { transform: rotate(90deg); }
+    .session-group-header .session-icon { font-size: 1.25rem; }
+    .session-group-header .session-name { flex: 1; margin: 0; font-weight: 600; }
+    .session-group-header .session-status { position: static; width: 8px; height: 8px; }
+    .session-group-header .task-count { 
+      font-size: 0.7rem; 
+      padding: 0.125rem 0.375rem; 
+      background: #334155; 
+      border-radius: 4px;
+    }
+    .session-group-tasks { 
+      background: #0f172a40; 
+      border-radius: 0 0 8px 8px; 
+      padding: 0.5rem;
+      display: none;
+    }
+    .session-group-tasks.expanded { display: block; }
+    
+    .task-item { 
+      background: #1e293b; 
+      border-radius: 6px; 
+      padding: 0.75rem 1rem; 
+      display: flex; 
+      align-items: center; 
+      gap: 0.75rem; 
+      margin-bottom: 0.5rem;
+    }
+    .task-item:last-child { margin-bottom: 0; }
+    .task-priority { width: 4px; height: 100%; border-radius: 2px; min-height: 36px; }
+    .task-priority.high { background: #ef4444; }
+    .task-priority.medium { background: #f59e0b; }
+    .task-priority.low { background: #22c55e; }
+    .task-info { flex: 1; min-width: 0; }
+    .task-title { font-weight: 500; word-break: break-word; }
+    .task-meta { font-size: 0.7rem; color: #64748b; margin-top: 0.25rem; }
+    .task-actions { display: flex; gap: 0.25rem; }
+    .btn { padding: 0.375rem 0.75rem; border: none; border-radius: 6px; cursor: pointer; font-size: 0.7rem; transition: all 0.2s; }
+    .btn-mini { padding: 0.125rem 0.375rem; border: none; border-radius: 4px; cursor: pointer; font-size: 0.65rem; background: #3b82f620; color: #60a5fa; }
+    .btn-mini:hover { background: #3b82f640; }
+    .btn-primary { background: #3b82f6; color: white; }
+    .btn-primary:hover { background: #2563eb; }
+    .btn-success { background: #22c55e; color: white; }
+    .btn-success:hover { background: #16a34a; }
+    .btn-danger { background: #ef444420; color: #ef4444; }
+    .btn-danger:hover { background: #ef444440; }
+    .add-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-shrink: 0; }
+    .add-form input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e2e8f0; font-size: 0.875rem; }
+    .add-form input:focus { outline: none; border-color: #3b82f6; }
+    .add-form button { padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #3b82f6; color: white; cursor: pointer; font-size: 0.875rem; }
+    .no-tasks { text-align: center; padding: 1rem; color: #64748b; font-size: 0.875rem; }
+    .search-form { display: flex; gap: 0.5rem; margin-bottom: 1rem; flex-shrink: 0; }
+    .search-form input { flex: 1; padding: 0.5rem 0.75rem; border: 1px solid #334155; border-radius: 6px; background: #0f172a; color: #e2e8f0; font-size: 0.875rem; }
+    .search-form input:focus { outline: none; border-color: #3b82f6; }
+    .search-form button { padding: 0.5rem 1rem; border: none; border-radius: 6px; background: #3b82f6; color: white; cursor: pointer; font-size: 0.875rem; }
+    .search-form button:hover { background: #2563eb; }
+    .search-form button.clear { background: #64748b; }
+    .search-form button.clear:hover { background: #475569; }
+    .session-card { cursor: pointer; transition: background 0.2s; }
+    .session-card:hover { background: #1e293b; }
+    .activity-list { max-height: 200px; overflow-y: auto; margin-top: 0.5rem; }
+    .activity-item { font-size: 0.7rem; color: #94a3b8; padding: 0.25rem 0; border-bottom: 1px solid #1e293b; }
+    .activity-item:last-child { border-bottom: none; }
+    .activity-time { color: #64748b; margin-right: 0.5rem; }
+    .activity-detail { display: none; }
+    .activity-detail.visible { display: block; }
+    .session-detail { font-size: 0.8rem; }
+    .btn-small { padding: 0.25rem 0.5rem; font-size: 0.65rem; }
 
-        footer a {
-            color: var(--primary);
-            text-decoration: none;
-        }
+    /* Cognitive Load Panel */
+    .main-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 1.5rem; }
+    .cognitive-section { background: #1e293b; border-radius: 12px; padding: 1.25rem; display: flex; flex-direction: column; max-height: calc(100vh - 200px); overflow-y: auto; }
+    .cognitive-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem; padding-bottom: 0.75rem; border-bottom: 1px solid #334155; flex-shrink: 0; }
+    .cognitive-title { font-size: 0.95rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; }
+    .phase-tag { font-size: 0.65rem; padding: 0.125rem 0.375rem; border-radius: 4px; font-weight: 600; }
+    .phase-tag.p1 { background: #22c55e30; color: #22c55e; }
+    .phase-tag.p2 { background: #3b82f630; color: #3b82f6; }
+    .phase-tag.p3 { background: #f59e0b30; color: #f59e0b; }
+    .phase-tag.p4 { background: #ef444430; color: #ef4444; }
+    .cognitive-tabs { display: flex; gap: 0.25rem; margin-bottom: 0.75rem; flex-shrink: 0; }
+    .cog-tab { padding: 0.25rem 0.5rem; border-radius: 4px; font-size: 0.7rem; cursor: pointer; background: #334155; color: #94a3b8; border: none; transition: all 0.2s; }
+    .cog-tab:hover { background: #475569; }
+    .cog-tab.active { background: #3b82f6; color: white; }
+    .cognitive-content { flex: 1; overflow-y: auto; }
+    .cognitive-empty { text-align: center; padding: 1.5rem; color: #64748b; font-size: 0.8rem; }
 
-        /* Quick Start */
-        .quickstart {
-            padding: 5rem 0;
-        }
+    /* Confidence Meter */
+    .confidence-card { background: #0f172a; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem; }
+    .confidence-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem; }
+    .confidence-name { font-size: 0.8rem; font-weight: 500; }
+    .confidence-score { font-size: 0.75rem; font-weight: 600; padding: 0.125rem 0.375rem; border-radius: 4px; }
+    .confidence-score.high { background: #22c55e30; color: #22c55e; }
+    .confidence-score.medium { background: #f59e0b30; color: #f59e0b; }
+    .confidence-score.low { background: #ef444430; color: #ef4444; }
+    .confidence-bar { height: 4px; background: #334155; border-radius: 2px; overflow: hidden; }
+    .confidence-fill { height: 100%; border-radius: 2px; transition: width 0.3s; }
+    .confidence-fill.high { background: #22c55e; }
+    .confidence-fill.medium { background: #f59e0b; }
+    .confidence-fill.low { background: #ef4444; }
+    .confidence-action { font-size: 0.7rem; color: #94a3b8; margin-top: 0.25rem; }
 
-        .code-block {
-            background: #0d1117;
-            border-radius: 0.75rem;
-            padding: 1.5rem;
-            margin-top: 1.5rem;
-            overflow-x: auto;
-        }
+    /* Summary Cards in Cognitive Panel */
+    .cog-summary { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; margin-bottom: 1rem; }
+    .cog-stat { background: #0f172a; border-radius: 6px; padding: 0.75rem; text-align: center; }
+    .cog-stat-value { font-size: 1.25rem; font-weight: 600; }
+    .cog-stat-label { font-size: 0.65rem; color: #64748b; margin-top: 0.125rem; }
 
-        .code-block pre {
-            color: #c9d1d9;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 0.9rem;
-            line-height: 1.5;
-        }
+    /* SOP List */
+    .sop-item { background: #0f172a; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem; cursor: pointer; transition: background 0.2s; }
+    .sop-item:hover { background: #1e293b; }
+    .sop-name { font-size: 0.8rem; font-weight: 500; margin-bottom: 0.25rem; }
+    .sop-meta { font-size: 0.7rem; color: #64748b; }
+    .sop-steps { font-size: 0.65rem; color: #94a3b8; margin-top: 0.25rem; display: flex; gap: 0.25rem; flex-wrap: wrap; }
+    .sop-step { background: #334155; padding: 0.125rem 0.375rem; border-radius: 3px; }
 
-        .code-block code {
-            color: #c9d1d9;
-        }
+    /* Decision Rules */
+    .rule-item { background: #0f172a; border-radius: 8px; padding: 0.75rem; margin-bottom: 0.5rem; display: flex; align-items: center; gap: 0.5rem; }
+    .rule-icon { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .rule-icon.confirm { background: #ef4444; }
+    .rule-icon.auto { background: #22c55e; }
+    .rule-name { font-size: 0.75rem; flex: 1; }
+    .rule-risk { font-size: 0.65rem; padding: 0.125rem 0.375rem; border-radius: 3px; }
+    .rule-risk.high { background: #ef444430; color: #ef4444; }
+    .rule-risk.medium { background: #f59e0b30; color: #f59e0b; }
+    .rule-risk.low { background: #22c55e30; color: #22c55e; }
 
-        .comment { color: #8b949e; }
-        .keyword { color: #ff7b72; }
-        .string { color: #a5d6ff; }
-        .function { color: #d2a8ff; }
-
-        /* Cognitive Load Section */
-        .cognitive-load {
-            padding: 5rem 0;
-            background: rgba(30,41,59,0.5);
-        }
-
-        .load-cards {
-            display: grid;
-            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-            gap: 1.5rem;
-            margin-top: 2rem;
-        }
-
-        .load-card {
-            background: var(--card-bg);
-            border-radius: 1rem;
-            padding: 1.5rem;
-            border: 1px solid #334155;
-            position: relative;
-            overflow: hidden;
-        }
-
-        .load-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-        }
-
-        .load-card.phase1::before { background: #22c55e; }
-        .load-card.phase2::before { background: #3b82f6; }
-        .load-card.phase3::before { background: #f59e0b; }
-        .load-card.phase4::before { background: #ef4444; }
-
-        .load-phase {
-            font-size: 0.75rem;
-            font-weight: 700;
-            text-transform: uppercase;
-            letter-spacing: 0.05em;
-            margin-bottom: 0.5rem;
-        }
-
-        .load-card.phase1 .load-phase { color: #22c55e; }
-        .load-card.phase2 .load-phase { color: #3b82f6; }
-        .load-card.phase3 .load-phase { color: #f59e0b; }
-        .load-card.phase4 .load-phase { color: #ef4444; }
-
-        .load-card h3 {
-            font-size: 1.1rem;
-            margin-bottom: 0.75rem;
-        }
-
-        .load-card p {
-            color: var(--text-muted);
-            font-size: 0.9rem;
-            margin-bottom: 1rem;
-        }
-
-        .load-features {
-            list-style: none;
-            font-size: 0.85rem;
-        }
-
-        .load-features li {
-            padding: 0.25rem 0;
-            color: var(--text-muted);
-        }
-
-        .load-features li::before {
-            content: '✓ ';
-            color: var(--secondary);
-            margin-right: 0.5rem;
-        }
-
-        /* Confidence Meter */
-        .confidence-meter {
-            display: flex;
-            gap: 0.5rem;
-            align-items: center;
-            margin-top: 1rem;
-            padding: 0.75rem;
-            background: rgba(0,0,0,0.2);
-            border-radius: 0.5rem;
-        }
-
-        .confidence-dot {
-            width: 12px;
-            height: 12px;
-            border-radius: 50%;
-        }
-
-        .confidence-dot.high { background: #22c55e; }
-        .confidence-dot.medium { background: #f59e0b; }
-        .confidence-dot.low { background: #ef4444; }
-
-        .confidence-label {
-            font-size: 0.75rem;
-            color: var(--text-muted);
-        }
-    </style>
+    /* Test Button */
+    .test-btn { width: 100%; padding: 0.5rem; background: #3b82f6; color: white; border: none; border-radius: 6px; cursor: pointer; font-size: 0.75rem; margin-top: 0.5rem; }
+    .test-btn:hover { background: #2563eb; }
+    .test-result { margin-top: 0.5rem; padding: 0.5rem; background: #0f172a; border-radius: 6px; font-size: 0.7rem; }
+    .test-result.success { border-left: 3px solid #22c55e; }
+    .test-result.error { border-left: 3px solid #ef4444; }
+  </style>
 </head>
 <body>
-    <section class="hero">
-        <div class="container">
-            <span class="badge">🧠 AI 时代减负方案</span>
-            <h1>OpenCode Task Hub</h1>
-            <p>AI 驱动的任务管理系统 + 三层负荷优化，让 AI 帮你干活，你不再更累</p>
-            <div class="cta-group">
-                <a href="https://github.com/lxztry/opencode-task-hub" class="btn btn-primary">
-                    📦 GitHub
-                </a>
-                <a href="https://discord.gg/opencode" class="btn btn-secondary">
-                    💬 加入社区
-                </a>
-            </div>
-        </div>
-    </section>
-    
-    <section class="features">
-        <div class="container">
-            <h2 class="section-title">✨ 核心功能</h2>
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">🤖</div>
-                    <h3>AI 智能分配</h3>
-                    <p>基于技能匹配度和可用性自动推荐最佳任务负责人，提高团队效率</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📊</div>
-                    <h3>Sprint 预测</h3>
-                    <p>智能预测 Sprint 完成时间，识别潜在风险，提前预警延期可能</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔗</div>
-                    <h3>会话管理</h3>
-                    <p>树形会话结构，支持 Checkpoint 快照，随时回滚到任意状态</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">📈</div>
-                    <h3>燃尽图 & Velocity</h3>
-                    <p>实时追踪 Sprint 进度，可视化团队产能，科学规划未来迭代</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">🔌</div>
-                    <h3>Webhook 集成</h3>
-                    <p>支持 GitHub PR 关联、日历同步、飞书/Discord 通知</p>
-                </div>
-                <div class="feature-card">
-                    <div class="feature-icon">⚡</div>
-                    <h3>实时协作</h3>
-                    <p>WebSocket 实时推送，多人同时在线，光标位置同步</p>
-                </div>
-            </div>
-        </div>
-    </section>
+  <div class="container">
+    <header>
+      <h1>🎯 OpenCode Task Hub <span style="font-size:0.8rem;color:#64748b;">v2.3.0</span></h1>
+      <div class="status">
+        <div class="status-dot" id="wsStatus"></div>
+        <span id="wsText">连接中...</span>
+      </div>
+    </header>
 
-    <section class="cognitive-load">
-        <div class="container">
-            <h2 class="section-title">🧠 三层负荷优化 (AI 时代减负方案)</h2>
-            <p style="text-align: center; color: var(--text-muted); max-width: 700px; margin: 0 auto 2rem;">
-                基于认知科学理论，降低 AI 协作中的切换代价、上下文压力和焦虑负荷，
-                让人类从"AI 管理者"回归"决策者和创造者"
-            </p>
-            <div class="load-cards">
-                <div class="load-card phase1">
-                    <div class="load-phase">Phase 1</div>
-                    <h3>进度连续性记忆</h3>
-                    <p>减少任务切换的认知恢复成本</p>
-                    <ul class="load-features">
-                        <li>记住上次查看位置</li>
-                        <li>Session 阅读进度追踪</li>
-                        <li>智能推荐下一个 Session</li>
-                    </ul>
+    <div class="summary">
+      <div class="summary-card">
+        <div class="summary-value" id="totalSessions">0</div>
+        <div class="summary-label">会话数</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value green" id="activeSessions">0</div>
+        <div class="summary-label">活跃中</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="totalTokens">0</div>
+        <div class="summary-label">Token总量</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="inputTokens">0</div>
+        <div class="summary-label">输入Token</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value" id="outputTokens">0</div>
+        <div class="summary-label">输出Token</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value orange" id="tokenRate">0/s</div>
+        <div class="summary-label">实时消费</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value blue" id="totalTasks">0</div>
+        <div class="summary-label">任务数</div>
+      </div>
+      <div class="summary-card">
+        <div class="summary-value green" id="completedTasks">0</div>
+        <div class="summary-label">已完成</div>
+      </div>
+    </div>
+
+    <div class="main-grid" style="grid-template-columns: 1fr 1fr">
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            💻 OpenCode 会话
+            <span class="badge" id="sessionCount">0</span>
+          </div>
+          <div class="view-switcher">
+            <button class="view-btn active" onclick="setView('grid')" title="卡片视图">▦</button>
+            <button class="view-btn" onclick="setView('list')" title="列表视图">☰</button>
+            <button class="view-btn" onclick="setView('compact')" title="紧凑视图">▤</button>
+          </div>
+        </div>
+        
+        <div class="sort-controls">
+          <button class="sort-btn active" onclick="setSort('recent')" data-sort="recent">最近</button>
+          <button class="sort-btn" onclick="setSort('health')" data-sort="health">健康度</button>
+          <button class="sort-btn" onclick="setSort('priority')" data-sort="priority">优先级</button>
+        </div>
+        
+        <div class="search-form">
+          <input type="text" id="sessionSearchInput" placeholder="按项目名称搜索会话...">
+          <button class="btn btn-primary" onclick="searchSessions()">搜索</button>
+          <button class="btn clear" onclick="clearSearch()">清除</button>
+        </div>
+        <div class="sessions-list" id="sessionsList"></div>
+      </div>
+
+      <div class="section">
+        <div class="section-header">
+          <div class="section-title">
+            📋 任务列表
+            <span class="badge" id="taskCount">0</span>
+          </div>
+        </div>
+        
+        <div class="parse-section">
+          <label>🧠 自然语言创建任务（自动解析）</label>
+          <input type="text" class="parse-input" id="parseTaskInput" placeholder="例如：创建用户登录功能 / 修复支付bug">
+          <button class="btn btn-primary" onclick="parseAndCreateTask()">解析并创建</button>
+          <div id="parseResult"></div>
+        </div>
+        
+        <div class="add-form">
+          <input type="text" id="newTaskInput" placeholder="输入新任务...">
+          <button class="btn btn-primary" onclick="addTask()">添加</button>
+        </div>
+        <div class="tasks-container" id="tasksContainer"></div>
+      </div>
+
+      <!-- Cognitive Load Panel -->
+      <div class="cognitive-section">
+        <div class="cognitive-header">
+          <div class="cognitive-title">
+            🧠 认知负荷
+            <span class="phase-tag p1">P1</span>
+            <span class="phase-tag p2">P2</span>
+            <span class="phase-tag p3">P3</span>
+            <span class="phase-tag p4">P4</span>
+          </div>
+          <span class="badge" id="cognitiveStatus">测试中</span>
+        </div>
+        <div class="cognitive-tabs">
+          <button class="cog-tab active" onclick="switchCogTab('summary')">概览</button>
+          <button class="cog-tab" onclick="switchCogTab('confidence')">置信度</button>
+          <button class="cog-tab" onclick="switchCogTab('sops')">SOP</button>
+          <button class="cog-tab" onclick="switchCogTab('decisions')">决策</button>
+        </div>
+        <div class="cognitive-content" id="cognitiveContent">
+          <div class="cognitive-empty">加载中...</div>
+        </div>
+        <button class="test-btn" onclick="testCognitiveAPI()">🧪 测试 API 连接</button>
+        <div id="testResult"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let allSessions = [];
+    let tasks = [];
+    let ws = null;
+    let expandedSessions = new Set();
+    let searchQuery = '';
+    let currentView = 'grid';
+    let currentSort = 'recent';
+    let sessionHealths = {};
+
+    function connect() {
+      ws = new WebSocket('ws://localhost:3030');
+      ws.onopen = () => {
+        document.getElementById('wsStatus').classList.remove('offline');
+        document.getElementById('wsText').textContent = '已连接';
+      };
+      ws.onclose = () => {
+        document.getElementById('wsStatus').classList.add('offline');
+        document.getElementById('wsText').textContent = '重连中...';
+        setTimeout(connect, 3000);
+      };
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'connected') {
+          allSessions = data.sessions || [];
+          tasks = data.tasks || [];
+          updateSummary(data.summary);
+          if (expandedSessions.size === 0) {
+            allSessions.forEach(s => expandedSessions.add(s.id));
+          }
+          render();
+          loadSessionHealths();
+        } else if (data.type === 'session:created') {
+          allSessions.push(data.session);
+          expandedSessions.add(data.session.id);
+          render();
+          loadSessionHealths();
+        } else if (data.type === 'session:updated') {
+          const idx = allSessions.findIndex(s => s.id === data.session.id);
+          if (idx !== -1) allSessions[idx] = data.session;
+          else {
+            allSessions.push(data.session);
+          }
+          renderSessions();
+        } else if (data.type === 'session:removed') {
+          allSessions = allSessions.filter(s => s.id !== data.sessionId);
+          render();
+        } else if (data.type === 'task:created') {
+          tasks.unshift(data.task);
+          render();
+        } else if (data.type === 'task:updated') {
+          const idx = tasks.findIndex(t => t.id === data.task.id);
+          if (idx !== -1) tasks[idx] = data.task;
+          render();
+        } else if (data.type === 'task:deleted') {
+          tasks = tasks.filter(t => t.id !== data.taskId);
+          render();
+        } else if (data.type === 'activity') {
+          const idx = allSessions.findIndex(s => s.id === data.session.id);
+          if (idx !== -1) allSessions[idx] = data.session;
+          renderSessions();
+        }
+      };
+    }
+
+    async function loadData() {
+      const [sessionsRes, tasksRes] = await Promise.all([
+        fetch('/api/sessions'),
+        fetch('/api/tasks')
+      ]);
+      const sessionsData = await sessionsRes.json();
+      const tasksData = await tasksRes.json();
+      allSessions = sessionsData.sessions || [];
+      tasks = tasksData.tasks || [];
+      allSessions.forEach(s => expandedSessions.add(s.id));
+      updateSummary({
+        totalSessions: allSessions.length,
+        activeSessions: allSessions.filter(s => s.status === 'active').length,
+        totalTasks: tasks.length,
+        activeTasks: tasks.filter(t => t.status === 'in_progress').length,
+        completedTasks: tasks.filter(t => t.status === 'completed').length,
+        tokenUsageSummary: sessionsData.tokenUsageSummary || { totalTokens: 0 }
+      });
+      render();
+      loadSessionHealths();
+    }
+
+    async function loadSessionHealths() {
+      try {
+        const res = await fetch('/api/sessions/health');
+        const data = await res.json();
+        sessionHealths = {};
+        for (const h of data.sessions || []) {
+          sessionHealths[h.sessionId] = h;
+        }
+        renderSessions();
+      } catch (e) {
+        console.error('Failed to load session healths:', e);
+      }
+    }
+
+    function getFilteredSessions() {
+      if (!searchQuery) return allSessions;
+      const query = searchQuery.toLowerCase();
+      return allSessions.filter(s => s.projectName.toLowerCase().includes(query));
+    }
+
+    function getSortedSessions(sessions) {
+      const sorted = [...sessions];
+      switch (currentSort) {
+        case 'health':
+          sorted.sort((a, b) => {
+            const healthA = sessionHealths[a.id]?.health || 50;
+            const healthB = sessionHealths[b.id]?.health || 50;
+            return healthA - healthB;
+          });
+          break;
+        case 'priority':
+          sorted.sort((a, b) => {
+            const priorityOrder = { critical: 0, high: 1, medium: 2, low: 3 };
+            const priorityA = sessionHealths[a.id]?.priority || 'medium';
+            const priorityB = sessionHealths[b.id]?.priority || 'medium';
+            return (priorityOrder[priorityA] || 2) - (priorityOrder[priorityB] || 2);
+          });
+          break;
+        case 'recent':
+        default:
+          sorted.sort((a, b) => new Date(b.lastHeartbeat).getTime() - new Date(a.lastHeartbeat).getTime());
+          break;
+      }
+      return sorted;
+    }
+
+    function setView(view) {
+      currentView = view;
+      document.querySelectorAll('.view-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.view-btn[onclick="setView('${view}')"]`).classList.add('active');
+      renderSessions();
+    }
+
+    function setSort(sort) {
+      currentSort = sort;
+      document.querySelectorAll('.sort-btn').forEach(btn => btn.classList.remove('active'));
+      document.querySelector(`.sort-btn[data-sort="${sort}"]`).classList.add('active');
+      renderSessions();
+    }
+
+    async function searchSessions() {
+      searchQuery = document.getElementById('sessionSearchInput').value.trim();
+      if (!searchQuery) {
+        clearSearch();
+        return;
+      }
+      renderSessions();
+    }
+
+    async function clearSearch() {
+      document.getElementById('sessionSearchInput').value = '';
+      searchQuery = '';
+      renderSessions();
+    }
+
+    function updateSummary(summary) {
+      document.getElementById('totalSessions').textContent = summary.totalSessions;
+      document.getElementById('activeSessions').textContent = summary.activeSessions;
+      document.getElementById('totalTokens').textContent = formatNumber(summary.tokenUsageSummary?.totalTokens || 0);
+      document.getElementById('inputTokens').textContent = formatNumber(summary.tokenUsageSummary?.totalInputTokens || 0);
+      document.getElementById('outputTokens').textContent = formatNumber(summary.tokenUsageSummary?.totalOutputTokens || 0);
+      document.getElementById('totalTasks').textContent = summary.totalTasks;
+      document.getElementById('completedTasks').textContent = summary.completedTasks;
+      const rate = summary.tokenUsageSummary?.totalRatePerSecond || 0;
+      document.getElementById('tokenRate').textContent = rate > 0 ? formatNumber(rate) + '/s' : '0/s';
+      document.getElementById('sessionCount').textContent = searchQuery ? getFilteredSessions().length : summary.totalSessions;
+      document.getElementById('taskCount').textContent = tasks.length;
+    }
+
+    function formatNumber(num) {
+      if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
+      if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
+      return num.toString();
+    }
+
+    function formatTokens(num) {
+      if (!num) return '0';
+      return formatNumber(num);
+    }
+
+    function render() {
+      renderSessions();
+      renderTasks();
+    }
+
+    function renderSessions() {
+      const list = document.getElementById('sessionsList');
+      const filteredSessions = getFilteredSessions();
+      const sortedSessions = getSortedSessions(filteredSessions);
+      
+      if (sortedSessions.length === 0) {
+        const msg = searchQuery ? '未找到匹配的会话' : '暂无活跃会话';
+        const sub = searchQuery ? '尝试其他关键词' : '在 opencode 中打开项目即可自动显示';
+        list.innerHTML = `<div class="empty"><div class="empty-icon">💻</div><div>${msg}</div><div style="font-size:0.7rem;margin-top:0.5rem">${sub}</div></div>`;
+        return;
+      }
+
+      // Render based on current view
+      if (currentView === 'grid') {
+        list.innerHTML = `<div class="sessions-grid">${sortedSessions.map(s => renderSessionCardGrid(s)).join('')}</div>`;
+      } else if (currentView === 'compact') {
+        list.innerHTML = `<div class="sessions-compact">${sortedSessions.map(s => renderSessionCardCompact(s)).join('')}</div>`;
+      } else {
+        list.innerHTML = sortedSessions.map(s => renderSessionCardList(s)).join('');
+      }
+    }
+
+    function renderSessionCardGrid(s) {
+      const health = sessionHealths[s.id] || { health: 50, progress: 0, blockers: 0, priority: 'medium', type: 'feature', velocity: 0, summary: '' };
+      const sessionTasks = tasks.filter(t => t.sessionId === s.id || t.projectKey === s.projectKey);
+      const completedTasks = sessionTasks.filter(t => t.status === 'completed').length;
+      const totalTasks = sessionTasks.length;
+      const progress = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+      const healthLevel = health.health > 70 ? 'high' : health.health > 40 ? 'medium' : 'low';
+      const duration = health.duration ? formatDuration(health.duration) : 'N/A';
+      
+      return `
+        <div class="session-card-grid" onclick="toggleSessionDetail('${escapeHtml(s.id)}')">
+          <div class="card-header">
+            <div class="card-title">
+              <span>💻</span>
+              <span>${escapeHtml(s.projectName)}</span>
+            </div>
+            <div style="display:flex;gap:0.25rem;">
+              <span class="priority-badge ${health.priority}">${getPriorityLabel(health.priority)}</span>
+              <span class="type-badge">${getTypeLabel(health.type)}</span>
+            </div>
+          </div>
+          <div class="card-path">${escapeHtml(s.projectPath || '')}</div>
+          <div class="health-bar">
+            <div class="health-fill ${healthLevel}" style="width:${health.health}%"></div>
+          </div>
+          <div class="card-stats">
+            <span class="stat-item">🏥 ${health.health}%</span>
+            <span class="stat-item">📋 ${completedTasks}/${totalTasks}</span>
+            <span class="stat-item">⚡ ${health.velocity}/m</span>
+          </div>
+          ${health.blockers > 0 ? `<div class="blocker-warning">⚠️ ${health.blockers} 个阻塞项</div>` : ''}
+          <div class="card-summary">${escapeHtml(health.summary || s.lastActivity || '等待活动...')}</div>
+        </div>
+      `;
+    }
+
+    function renderSessionCardCompact(s) {
+      const health = sessionHealths[s.id] || { health: 50, progress: 0, blockers: 0, priority: 'medium' };
+      const sessionTasks = tasks.filter(t => t.sessionId === s.id || t.projectKey === s.projectKey);
+      const completedTasks = sessionTasks.filter(t => t.status === 'completed').length;
+      const totalTasks = sessionTasks.length;
+      const healthLevel = health.health > 70 ? 'high' : health.health > 40 ? 'medium' : 'low';
+      
+      return `
+        <div class="session-card-compact" onclick="toggleSessionDetail('${escapeHtml(s.id)}')">
+          <div class="compact-health" style="background:${healthLevel === 'high' ? '#22c55e' : healthLevel === 'medium' ? '#f59e0b' : '#ef4444'}"></div>
+          <span class="compact-name">${escapeHtml(s.projectName)}</span>
+          <span class="compact-stats">
+            <span>${completedTasks}/${totalTasks}</span>
+            <span>🏥${health.health}%</span>
+          </span>
+          ${health.blockers > 0 ? '<span style="color:#ef4444;font-size:0.7rem;">⚠️</span>' : ''}
+        </div>
+      `;
+    }
+
+    function renderSessionCardList(s) {
+      const sessionTasks = tasks.filter(t => t.sessionId === s.id || t.projectKey === s.projectKey);
+      const isExpanded = expandedSessions.has(s.id);
+      const tokenUsage = s.tokenUsage || {};
+      const totalTokens = tokenUsage.totalTokens || 0;
+      const inputTokens = tokenUsage.inputTokens || 0;
+      const outputTokens = tokenUsage.outputTokens || 0;
+      const conversationCount = tokenUsage.conversationCount || 0;
+      const usageRate = conversationCount > 0 ? Math.round(totalTokens / conversationCount) : 0;
+      const tokenRate = s.tokenRate || {};
+      const ratePerMin = tokenRate.perMinute || 0;
+      return `
+          <div class="session-card">
+            <div class="session-info" style="flex:1;min-width:0;">
+              <div style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;" onclick="toggleSessionDetail('${escapeHtml(s.id)}')">
+                <span class="session-icon">💻</span>
+                <span class="session-name">${escapeHtml(s.projectName)}</span>
+                <span class="badge">${sessionTasks.length} 任务</span>
+                ${totalTokens > 0 ? `<span class="badge" style="background:#3b82f680;">${formatTokens(totalTokens)} tokens</span>` : ''}
+                ${ratePerMin > 0 ? `<span class="badge" style="background:#f59e0b80;">${formatTokens(ratePerMin)}/min</span>` : ''}
+                <span class="badge">${(s.activities || []).length} 活动</span>
+                <span class="session-status ${s.status || 'active'}"></span>
+                ${s.pid ? `<button class="btn-mini" onclick="event.stopPropagation();focusWindow('${escapeHtml(s.projectKey)}')" title="聚焦窗口">🎯 聚焦</button>` : ''}
+                <span style="color:#64748b;font-size:0.7rem;">${isExpanded ? '▲' : '▼'}</span>
+              </div>
+              <div class="session-meta">${escapeHtml(s.projectPath || '')}</div>
+              <div class="session-activity">${escapeHtml(s.lastActivity || '等待活动...')}</div>
+            </div>
+            <div class="session-detail ${isExpanded ? 'expanded' : ''}" id="detail-${escapeHtml(s.id)}" style="display:none;width:100%;margin-top:0.5rem;padding-top:0.5rem;border-top:1px solid #334155;">
+              ${totalTokens > 0 ? `
+                <div style="margin-bottom:0.5rem;">
+                  <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">Token消耗:</div>
+                  <div style="display:flex;gap:1rem;font-size:0.7rem;flex-wrap:wrap;">
+                    <div style="color:#22c55e;">📥 输入: ${formatTokens(inputTokens)}</div>
+                    <div style="color:#3b82f6;">📤 输出: ${formatTokens(outputTokens)}</div>
+                    <div style="color:#f59e0b;">💬 对话: ${conversationCount}</div>
+                    <div style="color:#94a3b8;">📊 平均: ${formatTokens(usageRate)}/次</div>
+                  </div>
                 </div>
-                <div class="load-card phase2">
-                    <div class="load-phase">Phase 2</div>
-                    <h3>AI 上下文摘要</h3>
-                    <p>突破 7±2 工作记忆上限</p>
-                    <ul class="load-features">
-                        <li>3 句话概括 Session 状态</li>
-                        <li>批量摘要用于 Dashboard</li>
-                        <li>Task 简短摘要</li>
-                    </ul>
+              ` : ''}
+              ${ratePerMin > 0 ? `
+                <div style="margin-bottom:0.5rem;">
+                  <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">实时消费:</div>
+                  <div style="display:flex;gap:1rem;font-size:0.7rem;">
+                    <div style="color:#f59e0b;">⚡ ${formatTokens(tokenRate.perSecond || 0)}/秒</div>
+                    <div style="color:#f59e0b;">🔥 ${formatTokens(ratePerMin)}/分钟</div>
+                  </div>
                 </div>
-                <div class="load-card phase3">
-                    <div class="load-phase">Phase 3</div>
-                    <h3>置信度指标</h3>
-                    <p>消除 AI 焦虑负荷</p>
-                    <ul class="load-features">
-                        <li>AI 输出置信度评分</li>
-                        <li>三级动作建议</li>
-                        <li>变更历史追踪</li>
-                    </ul>
-                    <div class="confidence-meter">
-                        <span class="confidence-dot high"></span>
-                        <span style="font-size: 0.8rem;">95%+ 自动执行</span>
-                        <span class="confidence-dot medium" style="margin-left: 0.5rem;"></span>
-                        <span style="font-size: 0.8rem;">70-95% 通知</span>
-                        <span class="confidence-dot low" style="margin-left: 0.5rem;"></span>
-                        <span style="font-size: 0.8rem;">&lt;70% 确认</span>
+              ` : ''}
+              ${sessionTasks.length > 0 ? `
+                <div style="margin-bottom:0.5rem;">
+                  <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">任务列表:</div>
+                  ${sessionTasks.slice(0, 10).map(t => `
+                    <div style="font-size:0.7rem;padding:0.125rem 0;color:${t.status === 'completed' ? '#22c55e' : t.status === 'in_progress' ? '#3b82f6' : '#94a3b8'}">
+                      ${t.status === 'completed' ? '✅' : t.status === 'in_progress' ? '🔄' : '⏳'} ${escapeHtml(t.title || '未命名')}
                     </div>
+                  `).join('')}
+                  ${sessionTasks.length > 10 ? `<div style="font-size:0.65rem;color:#64748b;">...还有 ${sessionTasks.length - 10} 项</div>` : ''}
                 </div>
-                <div class="load-card phase4">
-                    <div class="load-phase">Phase 4</div>
-                    <h3>SOP + 决策边界</h3>
-                    <p>AI 定位从伙伴变工具</p>
-                    <ul class="load-features">
-                        <li>可定义标准操作流程</li>
-                        <li>人类决策边界明确化</li>
-                        <li>高风险操作强制确认</li>
-                    </ul>
-                </div>
+              ` : ''}
+              <div>
+                <div style="font-size:0.7rem;color:#64748b;margin-bottom:0.25rem;">最近活动:</div>
+                ${(s.activities || []).slice(0, 10).map(a => `
+                  <div class="activity-item">
+                    <span class="activity-time">${formatTime(a.timestamp)}</span>
+                    ${escapeHtml(a.description)}
+                  </div>
+                `).join('')}
+                ${(s.activities || []).length === 0 ? '<div style="font-size:0.65rem;color:#64748b;">暂无活动记录</div>' : ''}
+              </div>
             </div>
-        </div>
-    </section>
-    
-    <section class="architecture">
-        <div class="container">
-            <h2 class="section-title">🏗️ 系统架构</h2>
-            <div class="arch-diagram">
-                <pre>
-OpenCode Task Hub
-├── Gateway Server (HTTP + WebSocket)
-├── Session Manager (树形结构 + Checkpoint)
-├── Task Manager (增强看板)
-│   ├── AI Enhancer (智能分析)
-│   ├── Webhook Manager (外部集成)
-│   └── Analytics Engine (数据报表)
-├── Database (SQLite/PostgreSQL)
-└── Channel Plugins (CLI / Web / API)</pre>
+          </div>
+        `;
+      }).join('');
+    }
+
+    function toggleSessionDetail(sessionId) {
+      if (expandedSessions.has(sessionId)) {
+        expandedSessions.delete(sessionId);
+      } else {
+        expandedSessions.add(sessionId);
+      }
+      renderSessions();
+    }
+
+    async function focusWindow(projectKey) {
+      const session = allSessions.find(s => s.projectKey === projectKey);
+      if (!session || !session.pid) {
+        alert('无法找到对应窗口');
+        return;
+      }
+      try {
+        const res = await fetch(`/api/processes/${session.pid}/focus`, { method: 'POST' });
+        const data = await res.json();
+        if (!data.success) {
+          console.log('聚焦失败，尝试其他方式');
+        }
+      } catch (e) {
+        console.error('聚焦窗口失败:', e);
+      }
+    }
+
+    async function loadProcesses() {
+      try {
+        const res = await fetch('/api/processes');
+        const data = await res.json();
+        return data.processes || [];
+      } catch (e) {
+        return [];
+      }
+    }
+
+    function formatDuration(ms) {
+      if (!ms) return 'N/A';
+      const hours = Math.floor(ms / 3600000);
+      const minutes = Math.floor((ms % 3600000) / 60000);
+      if (hours > 0) return `${hours}h ${minutes}m`;
+      return `${minutes}m`;
+    }
+
+    function getPriorityLabel(priority) {
+      const labels = { critical: '紧急', high: '高', medium: '中', low: '低' };
+      return labels[priority] || '中';
+    }
+
+    function getTypeLabel(type) {
+      const labels = { sprint: 'Sprint', feature: '功能', bug: 'Bug', explore: '探索' };
+      return labels[type] || '功能';
+    }
+
+    function formatTime(timestamp) {
+      if (!timestamp) return '';
+      const d = new Date(timestamp);
+      return `${d.getHours().toString().padStart(2, '0')}:${d.getMinutes().toString().padStart(2, '0')}:${d.getSeconds().toString().padStart(2, '0')}`;
+    }
+
+    function renderTasks() {
+      const container = document.getElementById('tasksContainer');
+      
+      if (tasks.length === 0) {
+        container.innerHTML = '<div class="no-tasks">暂无任务<br><span style="font-size:0.7rem">在 opencode 中输入任务指令将自动显示</span></div>';
+        return;
+      }
+
+      let html = '';
+      const displaySessions = searchQuery ? getFilteredSessions() : allSessions;
+      
+      for (const session of displaySessions) {
+        const sessionDbId = session.id;
+        const projectKey = session.projectKey;
+        const sessionTasks = tasks.filter(t => 
+          t.sessionId === sessionDbId || 
+          t.projectKey === projectKey
+        );
+        const isExpanded = expandedSessions.has(sessionDbId);
+        
+        if (sessionTasks.length === 0) continue;
+        
+        const completedCount = sessionTasks.filter(t => t.status === 'completed').length;
+        
+        html += `
+          <div class="session-group" data-session="${escapeHtml(sessionDbId)}">
+            <div class="session-group-header" onclick="toggleSession('${escapeHtml(sessionDbId)}')">
+              <span class="toggle ${isExpanded ? 'expanded' : ''}">▶</span>
+              <span class="session-icon">💻</span>
+              <span class="session-name">${escapeHtml(session.projectName)}</span>
+              <span class="session-status ${session.status || 'active'}"></span>
+              <span class="task-count">${completedCount}/${sessionTasks.length}</span>
             </div>
-        </div>
-    </section>
-    
-    <section class="api-section">
-        <div class="container">
-            <h2 class="section-title">🔌 API 接口</h2>
-            <div class="api-grid">
-                <div class="api-endpoint">
-                    <span class="method method-get">GET</span>
-                    <span class="endpoint-path">/api/enhanced/sessions</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="method method-post">POST</span>
-                    <span class="endpoint-path">/api/enhanced/sessions</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="method method-get">GET</span>
-                    <span class="endpoint-path">/api/ai/analyze/:taskId</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="method method-post">POST</span>
-                    <span class="endpoint-path">/api/ai/suggest/:taskId</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="method method-get">GET</span>
-                    <span class="endpoint-path">/api/analytics/velocity</span>
-                </div>
-                <div class="api-endpoint">
-                    <span class="method method-get">GET</span>
-                    <span class="endpoint-path">/api/webhooks</span>
-                </div>
+            <div class="session-group-tasks ${isExpanded ? 'expanded' : ''}">
+              ${sessionTasks.map(t => renderTaskItem(t)).join('')}
             </div>
-        </div>
-    </section>
-    
-    <section class="quickstart">
-        <div class="container">
-            <h2 class="section-title">🚀 快速开始</h2>
-            <div class="code-block">
-                <pre><code><span class="comment"># 克隆项目</span>
-git clone https://github.com/lxztry/opencode-task-hub.git
-cd opencode-task-hub
+          </div>
+        `;
+      }
 
-<span class="comment"># 安装依赖</span>
-npm install
+      const unassignedTasks = tasks.filter(t => {
+        if (!t.sessionId && !t.projectKey) return true;
+        return !displaySessions.some(s => 
+          t.sessionId === s.id || 
+          t.projectKey === s.projectKey
+        );
+      });
 
-<span class="comment"># 启动服务</span>
-npm start
-
-<span class="comment"># 访问Dashboard</span>
-<span class="function">http://localhost:3030</span>
-
-<span class="comment"># 创建会话</span>
-curl -X POST http://localhost:3030/api/enhanced/sessions \
-  -H "Content-Type: application/json" \
-  -d '{"name":"Sprint 1","type":"sprint"}'
-
-<span class="comment"># AI 任务分析</span>
-curl http://localhost:3030/api/ai/analyze/task_123</code></pre>
+      if (unassignedTasks.length > 0) {
+        const sessionId = 'unassigned';
+        const isExpanded = expandedSessions.has(sessionId);
+        const completedCount = unassignedTasks.filter(t => t.status === 'completed').length;
+        
+        html += `
+          <div class="session-group" data-session="${sessionId}">
+            <div class="session-group-header" onclick="toggleSession('${sessionId}')">
+              <span class="toggle ${isExpanded ? 'expanded' : ''}">▶</span>
+              <span class="session-icon">📋</span>
+              <span class="session-name">未分配任务</span>
+              <span class="task-count">${completedCount}/${unassignedTasks.length}</span>
             </div>
+            <div class="session-group-tasks ${isExpanded ? 'expanded' : ''}">
+              ${unassignedTasks.map(t => renderTaskItem(t)).join('')}
+            </div>
+          </div>
+        `;
+      }
+
+      if (!html) {
+        container.innerHTML = '<div class="no-tasks">暂无任务</div>';
+      } else {
+        container.innerHTML = html;
+      }
+    }
+
+    function renderTaskItem(t) {
+      const statusText = t.status === 'completed' ? '✅ 已完成' : t.status === 'in_progress' ? '🔄 进行中' : '⏳ 待处理';
+      return `
+        <div class="task-item">
+          <div class="task-priority ${t.priority || 'medium'}"></div>
+          <div class="task-info">
+            <div class="task-title">${escapeHtml(t.title || '未命名任务')}</div>
+            <div class="task-meta">${statusText}</div>
+          </div>
+          <div class="task-actions">
+            ${t.status !== 'completed' ? `<button class="btn btn-success" onclick="completeTask('${t.id}')">完成</button>` : ''}
+            <button class="btn btn-danger" onclick="deleteTask('${t.id}')">删除</button>
+          </div>
         </div>
-    </section>
-    
-    <footer>
-        <div class="container">
-            <p>
-                <a href="https://github.com/lxztry/opencode-task-hub">GitHub</a> · 
-                <a href="https://github.com/lxztry/opencode-task-hub/discussions">讨论</a> · 
-                <a href="https://github.com/lxztry/opencode-task-hub/issues">问题反馈</a>
-            </p>
-            <p style="margin-top: 1rem; font-size: 0.875rem;">
-                Made with ❤️ by <a href="https://github.com/lxztry">lxztry</a>
-            </p>
+      `;
+    }
+
+    function toggleSession(sessionId) {
+      if (expandedSessions.has(sessionId)) {
+        expandedSessions.delete(sessionId);
+      } else {
+        expandedSessions.add(sessionId);
+      }
+      renderTasks();
+    }
+
+    function escapeHtml(text) {
+      if (!text) return '';
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    async function addTask() {
+      const input = document.getElementById('newTaskInput');
+      const title = input.value.trim();
+      if (!title) return;
+      await fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, status: 'pending', priority: 'medium' })
+      });
+      input.value = '';
+    }
+
+    async function parseAndCreateTask() {
+      const input = document.getElementById('parseTaskInput');
+      const parseResult = document.getElementById('parseResult');
+      const text = input.value.trim();
+      if (!text) {
+        parseResult.innerHTML = '<div class="parse-result error">请输入任务描述</div>';
+        return;
+      }
+      
+      parseResult.innerHTML = '<div class="parse-result" style="border-left:3px solid #3b82f6;">正在解析...</div>';
+      
+      try {
+        // Find the most recent session to link the task
+        const session = allSessions.length > 0 ? allSessions[0] : null;
+        
+        const res = await fetch('/api/tasks/parse', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            text, 
+            sessionId: session?.id,
+            projectKey: session?.projectKey
+          })
+        });
+        
+        if (!res.ok) {
+          throw new Error('解析失败');
+        }
+        
+        const data = await res.json();
+        const task = data.task;
+        const parsed = data.parsed;
+        
+        parseResult.innerHTML = `
+          <div class="parse-result success">
+            <div style="color:#22c55e;font-weight:600;">✅ 任务已创建</div>
+            <div style="margin-top:0.25rem;">
+              <strong>标题:</strong> ${escapeHtml(task.title)}<br>
+              <strong>优先级:</strong> ${getPriorityLabel(task.priority)}<br>
+              ${task.tags?.length > 0 ? `<strong>标签:</strong> ${task.tags.join(', ')}` : ''}
+            </div>
+          </div>
+        `;
+        
+        input.value = '';
+        loadData();
+      } catch (e) {
+        parseResult.innerHTML = `<div class="parse-result error">❌ 解析失败: ${e.message}</div>`;
+      }
+    }
+
+    async function completeTask(id) {
+      await fetch(`/api/tasks/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'completed' })
+      });
+    }
+
+    async function deleteTask(id) {
+      if (confirm('确定删除此任务?')) {
+        await fetch(`/api/tasks/${id}`, { method: 'DELETE' });
+      }
+    }
+
+    document.getElementById('newTaskInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') addTask();
+    });
+
+    document.getElementById('sessionSearchInput').addEventListener('keypress', (e) => {
+      if (e.key === 'Enter') searchSessions();
+    });
+
+    loadData();
+    connect();
+
+    // ============== Cognitive Load Panel ==============
+    let currentCogTab = 'summary';
+
+    async function testCognitiveAPI() {
+      const resultDiv = document.getElementById('testResult');
+      resultDiv.innerHTML = '<div style="font-size:0.7rem;color:#64748b;">测试中...</div>';
+
+      try {
+        // 测试置信度 API
+        const confRes = await fetch('/api/cognitive/confidence/evaluate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ outputType: 'task-creation', outputContent: '创建测试任务' })
+        });
+        const confData = await confRes.json();
+
+        // 测试 SOP API
+        const sopRes = await fetch('/api/cognitive/sops');
+        const sopData = await sopRes.json();
+
+        // 测试决策规则 API
+        const decRes = await fetch('/api/cognitive/decisions/rules');
+        const decData = await decRes.json();
+
+        resultDiv.innerHTML = `
+          <div class="test-result success">
+            <div style="color:#22c55e;font-weight:600;">✅ API 全部正常</div>
+            <div style="margin-top:0.25rem;color:#94a3b8;">
+              置信度: ${confData.score ? (confData.score * 100).toFixed(0) + '%' : 'N/A'} |
+              SOP数: ${sopData.sops?.length || 0} |
+              规则数: ${decData.rules?.length || 0}
+            </div>
+          </div>
+        `;
+        document.getElementById('cognitiveStatus').textContent = '正常';
+        document.getElementById('cognitiveStatus').style.background = '#22c55e30';
+
+        // 加载默认标签页
+        loadCognitiveData();
+      } catch (e) {
+        resultDiv.innerHTML = `
+          <div class="test-result error">
+            <div style="color:#ef4444;font-weight:600;">❌ API 连接失败</div>
+            <div style="margin-top:0.25rem;color:#94a3b8;font-size:0.65rem;">${e.message}</div>
+          </div>
+        `;
+        document.getElementById('cognitiveStatus').textContent = '离线';
+        document.getElementById('cognitiveStatus').style.background = '#ef444430';
+      }
+    }
+
+    function switchCogTab(tab) {
+      currentCogTab = tab;
+      document.querySelectorAll('.cog-tab').forEach(t => t.classList.remove('active'));
+      event.target.classList.add('active');
+      loadCognitiveData();
+    }
+
+    async function loadCognitiveData() {
+      const content = document.getElementById('cognitiveContent');
+      try {
+        switch (currentCogTab) {
+          case 'summary':
+            await loadCogSummary(content);
+            break;
+          case 'confidence':
+            await loadConfidenceData(content);
+            break;
+          case 'sops':
+            await loadSOPData(content);
+            break;
+          case 'decisions':
+            await loadDecisionData(content);
+            break;
+        }
+      } catch (e) {
+        content.innerHTML = `<div class="cognitive-empty">加载失败: ${e.message}</div>`;
+      }
+    }
+
+    async function loadCogSummary(content) {
+      const [sopRes, decRes, confRes] = await Promise.all([
+        fetch('/api/cognitive/sops'),
+        fetch('/api/cognitive/decisions/rules'),
+        fetch('/api/cognitive/confidence/history?limit=5')
+      ]);
+      const sops = (await sopRes.json()).sops || [];
+      const rules = (await decRes.json()).rules || [];
+      const history = (await confRes.json()).history || [];
+      const confirmRequired = rules.filter(r => r.requiresConfirmation).length;
+
+      content.innerHTML = `
+        <div class="cog-summary">
+          <div class="cog-stat">
+            <div class="cog-stat-value" style="color:#3b82f6;">${sops.length}</div>
+            <div class="cog-stat-label">SOP模板</div>
+          </div>
+          <div class="cog-stat">
+            <div class="cog-stat-value" style="color:#f59e0b;">${confirmRequired}</div>
+            <div class="cog-stat-label">需确认规则</div>
+          </div>
+          <div class="cog-stat">
+            <div class="cog-stat-value" style="color:#22c55e;">${history.length}</div>
+            <div class="cog-stat-label">变更记录</div>
+          </div>
         </div>
-    </footer>
+        <div style="font-size:0.75rem;color:#94a3b8;margin-bottom:0.5rem;">🧠 三层负荷优化说明</div>
+        <div style="font-size:0.7rem;color:#64748b;line-height:1.6;">
+          <div style="margin-bottom:0.5rem;">
+            <span class="phase-tag p1" style="display:inline;">P1</span>
+            <strong>进度记忆</strong>: 记住上次查看位置，减少切换代价
+          </div>
+          <div style="margin-bottom:0.5rem;">
+            <span class="phase-tag p2" style="display:inline;">P2</span>
+            <strong>AI摘要</strong>: 3句话概括Session状态
+          </div>
+          <div style="margin-bottom:0.5rem;">
+            <span class="phase-tag p3" style="display:inline;">P3</span>
+            <strong>置信度</strong>: 自动/通知/确认 三级动作
+          </div>
+          <div>
+            <span class="phase-tag p4" style="display:inline;">P4</span>
+            <strong>SOP+边界</strong>: 标准化流程，明确决策边界
+          </div>
+        </div>
+      `;
+    }
+
+    async function loadConfidenceData(content) {
+      // 测试评估一个操作的置信度
+      const testOps = [
+        { outputType: 'task-creation', outputContent: '创建一个新任务' },
+        { outputType: 'code', outputContent: '修改了 config 文件' },
+        { outputType: 'delete', outputContent: '删除某个文件' }
+      ];
+
+      let html = '<div style="font-size:0.7rem;color:#64748b;margin-bottom:0.5rem;">置信度评估示例:</div>';
+      for (const op of testOps) {
+        try {
+          const res = await fetch('/api/cognitive/confidence/evaluate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(op)
+          });
+          const data = await res.json();
+          const level = data.level || 'medium';
+          const score = (data.score * 100).toFixed(0);
+          const actionLabel = data.action === 'auto' ? '自动执行' : data.action === 'notify' ? '通知我' : '需确认';
+          html += `
+            <div class="confidence-card">
+              <div class="confidence-header">
+                <span class="confidence-name">${op.outputType}</span>
+                <span class="confidence-score ${level}">${score}% ${actionLabel}</span>
+              </div>
+              <div class="confidence-bar">
+                <div class="confidence-fill ${level}" style="width:${score}%"></div>
+              </div>
+              <div class="confidence-action">${data.summary || ''}</div>
+            </div>
+          `;
+        } catch (e) {
+          html += `<div class="cognitive-empty">加载失败: ${e.message}</div>`;
+          break;
+        }
+      }
+      content.innerHTML = html;
+    }
+
+    async function loadSOPData(content) {
+      const res = await fetch('/api/cognitive/sops');
+      const data = await res.json();
+      const sops = data.sops || [];
+
+      if (sops.length === 0) {
+        content.innerHTML = '<div class="cognitive-empty">暂无 SOP 模板</div>';
+        return;
+      }
+
+      let html = '';
+      for (const sop of sops.slice(0, 5)) {
+        const steps = JSON.parse(sop.steps || '[]');
+        html += `
+          <div class="sop-item">
+            <div class="sop-name">${sop.name}</div>
+            <div class="sop-meta">触发: ${sop.trigger?.type || 'all'} | 使用 ${sop.usage_count || 0} 次</div>
+            <div class="sop-steps">
+              ${steps.map(s => `<span class="sop-step">${s.name}</span>`).join('')}
+            </div>
+          </div>
+        `;
+      }
+      content.innerHTML = html;
+    }
+
+    async function loadDecisionData(content) {
+      const res = await fetch('/api/cognitive/decisions/rules');
+      const data = await res.json();
+      const rules = data.rules || [];
+
+      if (rules.length === 0) {
+        content.innerHTML = '<div class="cognitive-empty">暂无决策规则</div>';
+        return;
+      }
+
+      let html = '<div style="font-size:0.7rem;color:#64748b;margin-bottom:0.5rem;">需确认的操作:</div>';
+      const confirmRules = rules.filter(r => r.requiresConfirmation).slice(0, 8);
+      for (const rule of confirmRules) {
+        html += `
+          <div class="rule-item">
+            <span class="rule-icon confirm"></span>
+            <span class="rule-name">${rule.name}</span>
+            <span class="rule-risk ${rule.risk_level}">${rule.risk_level}</span>
+          </div>
+        `;
+      }
+
+      const autoRules = rules.filter(r => !r.requiresConfirmation).slice(0, 5);
+      if (autoRules.length > 0) {
+        html += '<div style="font-size:0.7rem;color:#64748b;margin:0.75rem 0 0.5rem;">可自动执行:</div>';
+        for (const rule of autoRules) {
+          html += `
+            <div class="rule-item">
+              <span class="rule-icon auto"></span>
+              <span class="rule-name">${rule.name}</span>
+            </div>
+          `;
+        }
+      }
+      content.innerHTML = html;
+    }
+
+    // 初始化时自动测试 API
+    setTimeout(testCognitiveAPI, 1000);
+  </script>
 </body>
 </html>
